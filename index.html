@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Control de Acceso NFC</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f; --surface: #13131a; --surface2: #1c1c27;
+    --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.14);
+    --text: #f0f0f5; --text2: #8888a0; --text3: #55556a;
+    --green: #00e57a; --green-bg: rgba(0,229,122,0.1); --green-border: rgba(0,229,122,0.25);
+    --red: #ff4d6a; --red-bg: rgba(255,77,106,0.1); --red-border: rgba(255,77,106,0.25);
+    --amber: #ffb347; --amber-bg: rgba(255,179,71,0.08);
+    --blue: #4d9fff; --blue-bg: rgba(77,159,255,0.1);
+    --radius: 12px; --radius-sm: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  nav { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg); z-index: 50; }
+  .nav-logo { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--text2); letter-spacing: 0.08em; }
+  .nav-logo span { color: var(--green); }
+  .nav-tabs { display: flex; gap: 4px; background: var(--surface); border-radius: var(--radius-sm); padding: 3px; }
+  .nav-tab { font-size: 12px; font-weight: 500; padding: 6px 14px; border-radius: 6px; border: none; background: transparent; color: var(--text2); cursor: pointer; }
+  .nav-tab.active { background: var(--surface2); color: var(--text); }
+  .view { display: none; padding: 20px; max-width: 600px; margin: 0 auto; }
+  .view.active { display: block; }
+
+  /* LECTOR */
+  .sala-lbl { font-size: 11px; letter-spacing: 0.1em; color: var(--text3); text-transform: uppercase; display: block; margin-bottom: 8px; font-family: 'DM Mono', monospace; }
+  .sala-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+  .sala-btn { padding: 10px 22px; border-radius: var(--radius-sm); border: 1px solid var(--border2); background: var(--surface); color: var(--text2); font-size: 14px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.15s; }
+  .sala-btn.sel { border-color: var(--green); color: var(--green); background: var(--green-bg); }
+  .scanner-area { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); padding: 44px 24px; text-align: center; margin-bottom: 18px; transition: border-color 0.3s, background 0.3s; }
+  .scanner-area.ok   { border-color: var(--green); background: var(--green-bg); }
+  .scanner-area.deny { border-color: var(--red);   background: var(--red-bg);   }
+  .scan-ring { width: 100px; height: 100px; border-radius: 50%; border: 2px solid var(--border2); display: flex; align-items: center; justify-content: center; margin: 0 auto 22px; transition: all 0.3s; }
+  .scan-ring.pulse { animation: pr 1.5s ease-in-out infinite; border-color: var(--blue); }
+  .scan-ring.ok   { border-color: var(--green); }
+  .scan-ring.deny { border-color: var(--red); }
+  @keyframes pr { 0%,100%{box-shadow:0 0 0 0 rgba(77,159,255,.3)} 50%{box-shadow:0 0 0 18px rgba(77,159,255,0)} }
+  .scan-icon  { font-size: 38px; line-height: 1; }
+  .scan-title { font-size: 20px; font-weight: 600; margin-bottom: 6px; }
+  .scan-sub   { font-size: 13px; color: var(--text2); }
+  .result-card { border-radius: var(--radius); padding: 18px; margin-bottom: 14px; border: 1px solid; display: none; }
+  .result-card.show { display: block; }
+  .result-card.ok   { background: var(--green-bg); border-color: var(--green-border); }
+  .result-card.deny { background: var(--red-bg);   border-color: var(--red-border);   }
+  .rbadge { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: .08em; padding: 3px 10px; border-radius: 4px; font-family: 'DM Mono', monospace; margin-bottom: 10px; }
+  .rbadge.ok   { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+  .rbadge.deny { background: var(--red-bg);   color: var(--red);   border: 1px solid var(--red-border);   }
+  .rname { font-size: 20px; font-weight: 600; margin-bottom: 2px; }
+  .rmeta { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; margin-bottom: 12px; }
+  .accesos-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .apill { border-radius: var(--radius-sm); padding: 10px 12px; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; }
+  .apill.si   { background: var(--green-bg); border: 1px solid var(--green-border); color: var(--green); }
+  .apill.no   { background: var(--red-bg);   border: 1px solid var(--red-border);   color: var(--red);   }
+  .rdetail { font-size: 13px; color: var(--text2); margin-top: 10px; }
+  .btn-scan { width: 100%; padding: 16px; border-radius: var(--radius); border: none; font-size: 16px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+  .btn-scan.ready    { background: var(--green); color: #000; }
+  .btn-scan.scanning { background: var(--surface2); color: var(--text2); cursor: not-allowed; }
+  .nfc-warn { background: var(--amber-bg); border: 1px solid rgba(255,179,71,.2); border-radius: var(--radius-sm); padding: 12px 14px; font-size: 12px; color: var(--amber); margin-bottom: 14px; display: none; }
+  .nfc-warn.show { display: block; }
+  .sec-title { font-size: 11px; letter-spacing: .1em; color: var(--text3); text-transform: uppercase; font-family: 'DM Mono', monospace; margin-bottom: 10px; }
+  .recent-list { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+  .ri { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 11px 14px; display: flex; align-items: center; gap: 10px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .dot.ok   { background: var(--green); }
+  .dot.deny { background: var(--red); }
+  .ri-name { font-size: 13px; font-weight: 500; }
+  .ri-info { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; margin-top: 1px; }
+
+  /* REGISTRO */
+  .stats-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 20px; }
+  .stat-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; }
+  .stat-num { font-size: 26px; font-weight: 600; line-height: 1; margin-bottom: 4px; }
+  .stat-lbl { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+  .log-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 8px; display: grid; grid-template-columns: 8px 1fr auto; gap: 10px; align-items: start; }
+  .log-name { font-size: 13px; font-weight: 500; }
+  .log-meta { font-size: 11px; color: var(--text2); font-family: 'DM Mono', monospace; margin-top: 2px; }
+  .log-time { font-size: 11px; font-family: 'DM Mono', monospace; color: var(--text3); text-align: right; white-space: nowrap; }
+  .empty-st { text-align: center; padding: 48px 0; color: var(--text3); font-size: 13px; }
+
+  /* ADMIN */
+  .adm-sec { margin-bottom: 28px; }
+  .adm-sec h3 { font-size: 11px; letter-spacing: .1em; color: var(--text3); text-transform: uppercase; font-family: 'DM Mono', monospace; margin-bottom: 12px; }
+  .tw { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { padding: 10px 14px; text-align: left; font-size: 10px; letter-spacing: .08em; color: var(--text3); font-weight: 500; font-family: 'DM Mono', monospace; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  .mono { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text2); }
+  .si-b { font-size: 10px; padding: 2px 7px; border-radius: 4px; background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); font-family: 'DM Mono', monospace; font-weight: 600; }
+  .no-b { font-size: 10px; padding: 2px 7px; border-radius: 4px; background: var(--red-bg);   color: var(--red);   border: 1px solid var(--red-border);   font-family: 'DM Mono', monospace; font-weight: 600; }
+  .drop-zone { background: var(--surface); border: 1px dashed var(--border2); border-radius: var(--radius); padding: 26px; text-align: center; cursor: pointer; margin-bottom: 10px; }
+  .drop-zone:hover { border-color: var(--blue); }
+  .imp-fb { display: none; border-radius: var(--radius-sm); padding: 12px 14px; font-size: 13px; margin-bottom: 10px; }
+  .fmt-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; }
+  .exp-btn { width: 100%; padding: 11px; border-radius: var(--radius-sm); border: 1px solid var(--border2); background: transparent; color: var(--text2); font-size: 13px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; margin-top: 10px; }
+  .exp-btn:hover { border-color: var(--blue); color: var(--blue); }
+  .del-btn { border-color: rgba(255,77,106,.2); color: var(--red); }
+  .del-btn:hover { border-color: var(--red); }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">NFC<span>·</span>ACCESS</div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showView('lector',this)">Lector</button>
+    <button class="nav-tab" onclick="showView('registro',this)">Registro</button>
+    <button class="nav-tab" onclick="showView('admin',this)">Admin</button>
+  </div>
+</nav>
+
+<!-- LECTOR -->
+<div id="view-lector" class="view active">
+  <span class="sala-lbl">Sala activa — elige dónde estás</span>
+  <div class="sala-btns">
+    <button class="sala-btn sel" id="btn-plenaria" onclick="selectSala('plenaria')">Sala Plenaria</button>
+    <button class="sala-btn"    id="btn-talleres"  onclick="selectSala('talleres')">Sala Talleres</button>
+  </div>
+
+  <div class="nfc-warn" id="nfc-warn"></div>
+
+  <div class="scanner-area" id="scan-area">
+    <div class="scan-ring" id="scan-ring"><div class="scan-icon" id="scan-icon">📡</div></div>
+    <div class="scan-title" id="scan-title">Listo para escanear</div>
+    <div class="scan-sub"   id="scan-sub">Acerca la tarjeta NFC al teléfono</div>
+  </div>
+
+  <div class="result-card" id="result-card">
+    <span class="rbadge" id="rbadge"></span>
+    <div class="rname"   id="rname"></div>
+    <div class="rmeta"   id="rmeta"></div>
+    <div class="accesos-grid" id="accesos-grid"></div>
+    <div class="rdetail" id="rdetail"></div>
+  </div>
+
+  <button class="btn-scan ready" id="btn-scan" onclick="startScan()">Escanear tarjeta NFC</button>
+
+  <div style="margin-top:28px;">
+    <div class="sec-title">Últimas lecturas</div>
+    <div class="recent-list" id="recent-list"></div>
+  </div>
+</div>
+
+<!-- REGISTRO -->
+<div id="view-registro" class="view">
+  <div class="stats-row" id="stats-row">
+    <div class="stat-box"><div class="stat-num">—</div><div class="stat-lbl">LECTURAS</div></div>
+    <div class="stat-box"><div class="stat-num" style="color:var(--green)">—</div><div class="stat-lbl">ACCESOS OK</div></div>
+    <div class="stat-box"><div class="stat-num" style="color:var(--red)">—</div><div class="stat-lbl">DENEGADOS</div></div>
+  </div>
+  <div class="sec-title">Historial completo</div>
+  <div id="log-list"><div class="empty-st">Sin registros todavía.<br>Empieza escaneando tarjetas.</div></div>
+  <button class="exp-btn" onclick="exportCSV()">Exportar registro como CSV</button>
+</div>
+
+<!-- ADMIN -->
+<div id="view-admin" class="view">
+
+  <div class="adm-sec">
+    <h3>Importar asistentes desde CSV</h3>
+    <div class="drop-zone" onclick="document.getElementById('csv-input').click()">
+      <div style="font-size:28px;margin-bottom:10px;">📄</div>
+      <div style="font-size:14px;font-weight:500;color:var(--text);margin-bottom:4px;">Selecciona el CSV exportado de Google Sheets</div>
+      <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">Archivo → Descargar → Valores separados por comas (.csv)</div>
+      <input type="file" id="csv-input" accept=".csv,.txt" style="display:none" onchange="importCSV(this)">
+    </div>
+    <div class="imp-fb" id="imp-fb"></div>
+    <div class="fmt-box">
+      <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:8px;">COLUMNAS QUE DETECTA LA APP (en cualquier orden)</div>
+      <div style="font-size:12px;color:var(--text2);font-family:'DM Mono',monospace;line-height:2;">
+        UID · ID · Nombre · Apellidos · Email · Teléfono<br>
+        Sala Plenaria <span style="color:var(--green)">SI</span> / <span style="color:var(--red)">NO</span><br>
+        Sala Talleres <span style="color:var(--green)">SI</span> / <span style="color:var(--red)">NO</span>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:10px;">La cabecera se detecta automáticamente. El orden de columnas no importa.</div>
+    </div>
+  </div>
+
+  <div class="adm-sec">
+    <h3>Asistentes cargados <span id="ast-count" style="color:var(--text3);font-weight:400;"></span></h3>
+    <div class="tw">
+      <table>
+        <thead><tr><th>ID</th><th>Nombre completo</th><th>UID NFC</th><th>Plenaria</th><th>Talleres</th></tr></thead>
+        <tbody id="ast-tbody">
+          <tr><td colspan="5" style="color:var(--text3);text-align:center;padding:24px;font-size:12px;">Importa un CSV para ver los asistentes.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <button class="exp-btn del-btn" onclick="clearAst()">Borrar todos los asistentes</button>
+  </div>
+
+</div>
+
+<script>
+let asistentes = [], registros = [], salaActiva = 'plenaria', scanning = false;
+
+// ── Acceso ──────────────────────────────────────────────────────────────────
+function puedeAcceder(a) { return salaActiva === 'plenaria' ? a.salaPlenaria : a.salaTalleres; }
+
+// ── Procesar lectura ─────────────────────────────────────────────────────────
+function procesarLectura(raw) {
+  const uid = raw.toUpperCase().replace(/[:\s\-]/g,'');
+  const a   = asistentes.find(x => x.uid === uid);
+  const hora = new Date();
+  const horaStr  = hora.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const fechaStr = hora.toLocaleDateString('es-ES');
+  const sala = salaActiva === 'plenaria' ? 'Sala Plenaria' : 'Sala Talleres';
+
+  if (!a) { showUnknown(uid, horaStr, sala); return; }
+  const ok = puedeAcceder(a);
+  registros.unshift({a, uid, sala, ok, horaStr, fechaStr});
+  showResult(a, ok, horaStr, sala);
+  renderRecent();
+}
+
+function showResult(a, ok, horaStr, sala) {
+  const cl = ok ? 'ok' : 'deny';
+  document.getElementById('scan-area').className  = 'scanner-area ' + cl;
+  document.getElementById('scan-ring').className  = 'scan-ring ' + cl;
+  document.getElementById('scan-icon').textContent  = ok ? '✓' : '✕';
+  document.getElementById('scan-title').textContent = ok ? 'Acceso permitido' : 'Acceso denegado';
+  document.getElementById('scan-sub').textContent   = sala + ' · ' + horaStr;
+  const card = document.getElementById('result-card');
+  card.className = 'result-card show ' + cl;
+  const badge = document.getElementById('rbadge');
+  badge.textContent = ok ? 'ACCESO OK' : 'DENEGADO';
+  badge.className   = 'rbadge ' + cl;
+  document.getElementById('rname').textContent = a.nombre + ' ' + a.apellidos;
+  document.getElementById('rmeta').textContent = 'ID ' + a.id + (a.email ? ' · ' + a.email : '');
+  document.getElementById('accesos-grid').innerHTML =
+    '<div class="apill ' + (a.salaPlenaria?'si':'no') + '"><span>' + (a.salaPlenaria?'✓':'✕') + '</span>Sala Plenaria</div>' +
+    '<div class="apill ' + (a.salaTalleres?'si':'no') + '"><span>' + (a.salaTalleres?'✓':'✕') + '</span>Sala Talleres</div>';
+  document.getElementById('rdetail').textContent = ok
+    ? 'Entrada registrada en ' + sala + ' a las ' + horaStr + '.'
+    : 'Sin permiso para ' + sala + '.';
+  setTimeout(resetScanner, 5000);
+}
+
+function showUnknown(uid, horaStr, sala) {
+  document.getElementById('scan-area').className  = 'scanner-area deny';
+  document.getElementById('scan-ring').className  = 'scan-ring deny';
+  document.getElementById('scan-icon').textContent  = '⚠';
+  document.getElementById('scan-title').textContent = 'Tarjeta no registrada';
+  document.getElementById('scan-sub').textContent   = 'UID: ' + uid;
+  const card = document.getElementById('result-card');
+  card.className = 'result-card show deny';
+  const badge = document.getElementById('rbadge');
+  badge.textContent = 'DESCONOCIDO'; badge.className = 'rbadge deny';
+  document.getElementById('rname').textContent = 'Tarjeta no encontrada';
+  document.getElementById('rmeta').textContent = uid;
+  document.getElementById('accesos-grid').innerHTML = '';
+  document.getElementById('rdetail').textContent = 'Este UID no está en la lista de asistentes.';
+  setTimeout(resetScanner, 5000);
+}
+
+function resetScanner() {
+  document.getElementById('scan-area').className  = 'scanner-area';
+  document.getElementById('scan-ring').className  = 'scan-ring';
+  document.getElementById('scan-icon').textContent  = '📡';
+  document.getElementById('scan-title').textContent = 'Listo para escanear';
+  document.getElementById('scan-sub').textContent   = 'Acerca la tarjeta NFC al teléfono';
+  document.getElementById('result-card').className  = 'result-card';
+  document.getElementById('btn-scan').className     = 'btn-scan ready';
+  document.getElementById('btn-scan').textContent   = 'Escanear tarjeta NFC';
+  scanning = false;
+}
+
+// ── NFC ──────────────────────────────────────────────────────────────────────
+async function startScan() {
+  if (scanning) return;
+  scanning = true;
+  document.getElementById('btn-scan').className   = 'btn-scan scanning';
+  document.getElementById('btn-scan').textContent = 'Esperando tarjeta…';
+  document.getElementById('scan-ring').classList.add('pulse');
+  document.getElementById('scan-title').textContent = 'Acerca la tarjeta';
+  document.getElementById('scan-sub').textContent   = 'Mantén la tarjeta cerca del teléfono';
+
+  if ('NDEFReader' in window) {
+    try {
+      const reader = new NDEFReader();
+      await reader.scan();
+      reader.addEventListener('reading', ({serialNumber}) => {
+        document.getElementById('scan-ring').classList.remove('pulse');
+        scanning = false;
+        procesarLectura(serialNumber);
+      }, {once: true});
+      return;
+    } catch(err) {
+      warn('Error NFC: ' + err.message + '. Usando modo simulación.');
+    }
+  } else {
+    warn('Web NFC no disponible en este navegador. Usa Chrome en Android con NFC activo, o prueba con simulación.');
+  }
+  document.getElementById('scan-ring').classList.remove('pulse');
+  scanning = false;
+  resetScanner();
+  simular();
+}
+
+function simular() {
+  const lista = asistentes.length
+    ? asistentes.slice(0,6).map(a => a.uid + '  →  ' + a.nombre + ' ' + a.apellidos).join('\n')
+    : '(sin asistentes cargados — importa un CSV primero)';
+  const uid = prompt('MODO SIMULACIÓN\nIntroduce el UID de la tarjeta:\n\n' + lista);
+  if (uid && uid.trim()) procesarLectura(uid.trim());
+}
+
+function warn(msg) {
+  const el = document.getElementById('nfc-warn');
+  el.textContent = msg; el.classList.add('show');
+}
+
+function selectSala(s) {
+  salaActiva = s;
+  document.getElementById('btn-plenaria').className = 'sala-btn' + (s==='plenaria'?' sel':'');
+  document.getElementById('btn-talleres').className  = 'sala-btn' + (s==='talleres'?' sel':'');
+  resetScanner();
+}
+
+// ── Renders ──────────────────────────────────────────────────────────────────
+function renderRecent() {
+  document.getElementById('recent-list').innerHTML = registros.slice(0,6).map(r =>
+    '<div class="ri">' +
+      '<div class="dot ' + (r.ok?'ok':'deny') + '"></div>' +
+      '<div style="flex:1;min-width:0;">' +
+        '<div class="ri-name">' + (r.a ? r.a.nombre+' '+r.a.apellidos : 'Desconocido') + '</div>' +
+        '<div class="ri-info">' + r.sala + ' · ' + r.horaStr + '</div>' +
+      '</div>' +
+      '<div style="font-size:11px;color:' + (r.ok?'var(--green)':'var(--red)') + ';">' + (r.ok?'✓':'✕') + '</div>' +
+    '</div>'
+  ).join('');
+}
+
+function renderLog() {
+  const list = document.getElementById('log-list');
+  if (!registros.length) { list.innerHTML = '<div class="empty-st">Sin registros todavía.<br>Empieza escaneando tarjetas.</div>'; }
+  else {
+    list.innerHTML = registros.map(r =>
+      '<div class="log-item">' +
+        '<div class="dot ' + (r.ok?'ok':'deny') + '" style="margin-top:3px;"></div>' +
+        '<div>' +
+          '<div class="log-name">' + (r.a ? r.a.nombre+' '+r.a.apellidos : 'Desconocido · '+r.uid) + '</div>' +
+          '<div class="log-meta">' + r.sala + (r.a ? ' · ID '+r.a.id : '') + '</div>' +
+        '</div>' +
+        '<div class="log-time">' + r.horaStr + '<br><span style="color:var(--text3)">' + r.fechaStr + '</span></div>' +
+      '</div>'
+    ).join('');
+  }
+  const total = registros.length, ok = registros.filter(r=>r.ok).length;
+  document.getElementById('stats-row').innerHTML =
+    '<div class="stat-box"><div class="stat-num">' + total + '</div><div class="stat-lbl">LECTURAS</div></div>' +
+    '<div class="stat-box"><div class="stat-num" style="color:var(--green)">' + ok + '</div><div class="stat-lbl">ACCESOS OK</div></div>' +
+    '<div class="stat-box"><div class="stat-num" style="color:var(--red)">' + (total-ok) + '</div><div class="stat-lbl">DENEGADOS</div></div>';
+}
+
+function renderAstTable() {
+  document.getElementById('ast-count').textContent = asistentes.length ? '('+asistentes.length+')' : '';
+  document.getElementById('ast-tbody').innerHTML = asistentes.length
+    ? asistentes.map(a =>
+        '<tr>' +
+          '<td class="mono">' + a.id + '</td>' +
+          '<td>' + a.nombre + ' ' + a.apellidos + '</td>' +
+          '<td class="mono">' + a.uid + '</td>' +
+          '<td><span class="' + (a.salaPlenaria?'si-b':'no-b') + '">' + (a.salaPlenaria?'SI':'NO') + '</span></td>' +
+          '<td><span class="' + (a.salaTalleres?'si-b':'no-b') + '">' + (a.salaTalleres?'SI':'NO') + '</span></td>' +
+        '</tr>'
+      ).join('')
+    : '<tr><td colspan="5" style="color:var(--text3);text-align:center;padding:24px;font-size:12px;">Sin asistentes. Importa un CSV.</td></tr>';
+}
+
+// ── CSV Import ───────────────────────────────────────────────────────────────
+function parseLine(line) {
+  const r=[]; let c='', q=false;
+  for(let i=0;i<line.length;i++){
+    const ch=line[i];
+    if(ch==='"'){q=!q;continue;}
+    if(ch===','&&!q){r.push(c.trim());c='';continue;}
+    c+=ch;
+  }
+  r.push(c.trim()); return r;
+}
+function norm(s){ return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,''); }
+
+function importCSV(input) {
+  const file = input.files[0]; if(!file) return;
+  const fr = new FileReader();
+  fr.onload = function(e) {
+    const lines = e.target.result.trim().split(/\r?\n/).filter(l=>l.trim());
+    if(lines.length < 2){ showFb('error','El archivo está vacío o solo tiene cabecera.'); return; }
+
+    const header = parseLine(lines[0]).map(norm);
+    const fi = {
+      uid:      header.findIndex(h=>h==='uid'),
+      id:       header.findIndex(h=>h==='id'),
+      nombre:   header.findIndex(h=>h==='nombre'),
+      apellidos:header.findIndex(h=>h==='apellidos'||h==='apellido'),
+      email:    header.findIndex(h=>h==='email'),
+      telefono: header.findIndex(h=>h==='telefono'||h==='tlf'||h==='phone'),
+      plenaria: header.findIndex(h=>h.includes('plenaria')),
+      talleres: header.findIndex(h=>h.includes('taller')),
+    };
+
+    if(fi.uid<0)      { showFb('error','Columna UID no encontrada.'); return; }
+    if(fi.nombre<0)   { showFb('error','Columna Nombre no encontrada.'); return; }
+    if(fi.plenaria<0) { showFb('error','Columna "Sala Plenaria" no encontrada.'); return; }
+    if(fi.talleres<0) { showFb('error','Columna "Sala Talleres" no encontrada.'); return; }
+
+    const existing = new Set(asistentes.map(a=>a.uid));
+    let imp=0, omit=0;
+    const nuevos=[];
+    lines.slice(1).forEach((line,i)=>{
+      const c = parseLine(line);
+      const uid=(c[fi.uid]||'').toUpperCase().replace(/[:\s\-]/g,'');
+      if(!uid){omit++;return;}
+      if(existing.has(uid)){omit++;return;}
+      const siNo = v => (v||'').trim().toUpperCase()==='SI';
+      nuevos.push({
+        uid,
+        id:          fi.id>=0      ? c[fi.id]        : String(i+1),
+        nombre:      fi.nombre>=0  ? c[fi.nombre]    : '',
+        apellidos:   fi.apellidos>=0? c[fi.apellidos]: '',
+        email:       fi.email>=0   ? c[fi.email]     : '',
+        telefono:    fi.telefono>=0 ? c[fi.telefono] : '',
+        salaPlenaria:siNo(c[fi.plenaria]),
+        salaTalleres:siNo(c[fi.talleres]),
+      });
+      existing.add(uid); imp++;
+    });
+
+    asistentes=[...asistentes,...nuevos];
+    renderAstTable();
+    input.value='';
+
+    if(imp>0&&omit===0) showFb('ok','✓ '+imp+' asistentes importados correctamente.');
+    else if(imp>0)       showFb('ok','✓ '+imp+' importados. '+omit+' filas omitidas (duplicados o sin UID).');
+    else                 showFb('error','No se importó ningún asistente. Comprueba que el CSV tenga columnas UID, Nombre, Sala Plenaria y Sala Talleres.');
+  };
+  fr.readAsText(file,'UTF-8');
+}
+
+function showFb(type, msg) {
+  const el=document.getElementById('imp-fb');
+  el.style.display='block';
+  el.style.background=type==='ok'?'var(--green-bg)':'var(--red-bg)';
+  el.style.border='1px solid '+(type==='ok'?'var(--green-border)':'var(--red-border)');
+  el.style.color=type==='ok'?'var(--green)':'var(--red)';
+  el.textContent=msg;
+  setTimeout(()=>el.style.display='none',6000);
+}
+
+function clearAst() {
+  if(!confirm('¿Borrar todos los asistentes cargados?')) return;
+  asistentes=[]; renderAstTable();
+}
+
+// ── Export registro ──────────────────────────────────────────────────────────
+function exportCSV() {
+  if(!registros.length){alert('No hay registros todavía.');return;}
+  const rows=[['Nombre','Apellidos','ID','UID','Email','Teléfono','Sala','Acceso','Hora','Fecha']];
+  registros.forEach(r=>rows.push([
+    r.a?r.a.nombre:'Desconocido', r.a?r.a.apellidos:'',
+    r.a?r.a.id:'', r.uid, r.a?r.a.email:'', r.a?r.a.telefono:'',
+    r.sala, r.ok?'OK':'DENEGADO', r.horaStr, r.fechaStr,
+  ]));
+  const csv=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download='registro-asistencia.csv'; a.click();
+}
+
+// ── Vistas ───────────────────────────────────────────────────────────────────
+function showView(v,btn) {
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(el=>el.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  btn.classList.add('active');
+  if(v==='registro') renderLog();
+  if(v==='admin')    renderAstTable();
+}
+</script>
+</body>
+</html>
