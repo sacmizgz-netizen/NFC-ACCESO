@@ -111,8 +111,6 @@
   @keyframes spin{to{transform:rotate(360deg)}}
   .nfc-status{font-size:12px;font-family:'DM Mono',monospace;padding:8px 12px;border-radius:var(--radius-sm);margin-bottom:8px;display:none;}
 </style>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
-<script src="https://apis.google.com/js/api.js" async defer></script>
 </head>
 <body>
 
@@ -139,9 +137,9 @@
 <div id="view-lector" class="view active">
   <span class="sala-lbl">Sala activa</span>
   <div class="sala-btns">
-    <button class="sala-btn sel" id="btn-servei"   onclick="selectSala('servei')">Sala Plenaria SERVEI</button>
-    <button class="sala-btn"    id="btn-sidi"      onclick="selectSala('sidi')">Sala Plenaria SIDI</button>
-    <button class="sala-btn"    id="btn-talleres"  onclick="selectSala('talleres')">Talleres</button>
+    <button class="sala-btn sel" id="btn-servei"  onclick="selectSala('servei')">Sala Plenaria SERVEI</button>
+    <button class="sala-btn"    id="btn-sidi"     onclick="selectSala('sidi')">Sala Plenaria SIDI</button>
+    <button class="sala-btn"    id="btn-talleres" onclick="selectSala('talleres')">Talleres</button>
   </div>
   <div class="nfc-warn" id="nfc-warn"></div>
   <div class="scanner-area" id="scan-area">
@@ -178,30 +176,22 @@
 
 <!-- ADMIN -->
 <div id="view-admin" class="view">
-
   <div class="adm-sec">
     <h3>Importar asistentes desde CSV</h3>
     <div class="drop-zone" onclick="document.getElementById('csv-input').click()">
       <div style="font-size:28px;margin-bottom:10px;">📄</div>
-      <div style="font-size:14px;font-weight:500;color:var(--text);margin-bottom:4px;">Selecciona el CSV exportado de Google Sheets o Excel</div>
-      <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">Se sincroniza en todos los dispositivos automáticamente</div>
+      <div style="font-size:14px;font-weight:500;color:var(--text);margin-bottom:4px;">Selecciona el CSV</div>
+      <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">Compatible con Excel y Google Sheets · Separador , o ;</div>
       <input type="file" id="csv-input" accept=".csv,.txt" style="display:none" onchange="importCSV(this)">
     </div>
-    <div style="display:flex;gap:8px;margin-bottom:10px;">
-      <button class="btn-add" id="btn-drive" onclick="importFromDrive()" style="flex:1;padding:12px;display:flex;align-items:center;justify-content:center;gap:8px;">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6.5 20L1 11l4.5-8h13L23 11l-5.5 9H6.5z" stroke="currentColor" stroke-width="1.5"/><path d="M1 11h22M8.5 3l-3 8M15.5 3l3 8M6.5 20l5.5-9 5.5 9" stroke="currentColor" stroke-width="1.5"/></svg>
-        Importar desde Google Drive
-      </button>
-    </div>
-    <div id="drive-fb" class="imp-fb"></div>
     <div class="imp-fb" id="imp-fb"></div>
     <div class="fmt-box">
-      <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:8px;">COLUMNAS DETECTADAS AUTOMÁTICAMENTE</div>
+      <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:8px;">COLUMNAS ESPERADAS EN EL CSV</div>
       <div style="font-size:12px;color:var(--text2);font-family:'DM Mono',monospace;line-height:2;">
-        UID · ID · NOMBRE · APELLIDOS · EMAIL · TELEFONO<br>
-        SALA PLENARIA SERVEI <span style="color:var(--green)">SI</span>/<span style="color:var(--red)">NO</span><br>
-        SALA PLENARIA SIDI <span style="color:var(--green)">SI</span>/<span style="color:var(--red)">NO</span><br>
-        TALLERES <span style="color:var(--green)">SI</span>/<span style="color:var(--red)">NO</span>
+        uid · id · nombre · apellidos · email · telefono<br>
+        salaplenariaservei &nbsp;<span style="color:var(--green)">SI</span>/<span style="color:var(--red)">NO</span><br>
+        salaplenariasidi &nbsp;<span style="color:var(--green)">SI</span>/<span style="color:var(--red)">NO</span><br>
+        talleres &nbsp;<span style="color:var(--green)">SI</span>/<span style="color:var(--red)">NO</span>
       </div>
     </div>
   </div>
@@ -212,7 +202,7 @@
       <div class="mft">Nuevo asistente</div>
       <div class="form-row" style="align-items:center;">
         <input class="form-input" id="m-uid" placeholder="UID NFC (obligatorio)" style="flex:1;">
-        <button class="btn-add" id="btn-read-nfc" onclick="readNfcForForm()" style="white-space:nowrap;flex-shrink:0;">📡 Leer tarjeta</button>
+        <button class="btn-add" id="btn-read-nfc" onclick="readNfcForForm()" style="flex-shrink:0;">📡 Leer tarjeta</button>
       </div>
       <div id="nfc-read-status" class="nfc-status"></div>
       <div class="form-row">
@@ -245,7 +235,6 @@
     </div>
     <button class="exp-btn del-btn" onclick="clearAst()">Borrar todos los asistentes</button>
   </div>
-
 </div>
 
 <script type="module">
@@ -271,28 +260,18 @@ const colReg = collection(db, 'registros');
 
 let asistentes = [], registros = [], salaActiva = 'servei', scanning = false;
 
-// ── Sync status ───────────────────────────────────────────────────────────────
-// Timeout: if Firebase doesn't respond in 10s, show helpful message
-setTimeout(() => {
-  if (document.getElementById('loading') && !document.getElementById('loading').classList.contains('hidden')) {
-    document.getElementById('loading').classList.add('hidden');
-    setSyncStatus('error', 'Sin respuesta de Firebase. Comprueba tu conexión a internet.');
-  }
-}, 10000);
-
 function setSyncStatus(state, msg) {
   document.getElementById('sync-bar').className = 'sync-bar ' + state;
   document.getElementById('sync-dot').className = 'sync-dot' + (state === 'connecting' ? ' pulse' : '');
   document.getElementById('sync-txt').textContent = msg;
 }
 
-// ── Firestore listeners ───────────────────────────────────────────────────────
 onSnapshot(colAst, snap => {
   asistentes = snap.docs.map(d => ({...d.data(), _docId: d.id}));
   renderAstTable();
   renderRecent();
 }, err => {
-  setSyncStatus('error', 'Error asistentes: ' + err.code + ' — ' + err.message);
+  setSyncStatus('error', 'Error: ' + err.code);
   document.getElementById('loading').classList.add('hidden');
 });
 
@@ -304,16 +283,14 @@ onSnapshot(qReg, snap => {
   document.getElementById('loading').classList.add('hidden');
   setSyncStatus('live', 'Sincronizado en tiempo real');
 }, err => {
-  setSyncStatus('error', 'Error registros: ' + err.code + ' — ' + err.message);
+  setSyncStatus('error', 'Error: ' + err.code);
   document.getElementById('loading').classList.add('hidden');
 });
 
-// ── Acceso ────────────────────────────────────────────────────────────────────
 function puedeAcceder(a) {
   return salaActiva === 'servei' ? a.salaServei : salaActiva === 'sidi' ? a.salaSidi : a.salaTalleres;
 }
 
-// ── Lector ────────────────────────────────────────────────────────────────────
 async function procesarLectura(raw) {
   const uid  = raw.toUpperCase().replace(/[:\s\-]/g, '');
   const a    = asistentes.find(x => x.uid === uid);
@@ -323,9 +300,7 @@ async function procesarLectura(raw) {
   const sala = salaActiva === 'servei' ? 'Sala Plenaria SERVEI' : salaActiva === 'sidi' ? 'Sala Plenaria SIDI' : 'Talleres';
   if (!a) { showUnknown(uid, horaStr, sala); return; }
   const ok = puedeAcceder(a);
-  try {
-    await addDoc(colReg, {uid, sala, ok, horaStr, fechaStr, aId: a.uid, nombre: a.nombre, apellidos: a.apellidos, ts: serverTimestamp()});
-  } catch(e) { console.error(e); }
+  try { await addDoc(colReg, {uid, sala, ok, horaStr, fechaStr, aId: a.uid, nombre: a.nombre, apellidos: a.apellidos, ts: serverTimestamp()}); } catch(e) { console.error(e); }
   showResult(a, ok, horaStr, sala);
 }
 
@@ -342,11 +317,8 @@ function showResult(a, ok, horaStr, sala) {
   document.getElementById('rname').textContent  = a.nombre + ' ' + a.apellidos;
   document.getElementById('rmeta').textContent  = 'ID ' + a.id + (a.email ? ' · ' + a.email : '');
   document.getElementById('acceso-single-wrap').innerHTML =
-    '<div class="acceso-single ' + (ok ? 'si' : 'no') + '">' +
-    '<span style="font-size:20px;">' + (ok ? '✓' : '✕') + '</span>' + sala + '</div>';
-  document.getElementById('rdetail').textContent = ok
-    ? 'Entrada registrada a las ' + horaStr + '.'
-    : 'Sin permiso para ' + sala + '.';
+    '<div class="acceso-single ' + (ok?'si':'no') + '"><span style="font-size:20px;">' + (ok?'✓':'✕') + '</span>' + sala + '</div>';
+  document.getElementById('rdetail').textContent = ok ? 'Entrada registrada a las ' + horaStr + '.' : 'Sin permiso para ' + sala + '.';
   setTimeout(resetScanner, 5000);
 }
 
@@ -407,31 +379,28 @@ window.startScan = async function() {
   document.getElementById('scan-ring').classList.remove('pulse');
   scanning = false;
   resetScanner();
-  const lista = asistentes.length
-    ? asistentes.slice(0,6).map(a => a.uid + '  →  ' + a.nombre + ' ' + a.apellidos).join('\n')
-    : '(sin asistentes)';
+  const lista = asistentes.length ? asistentes.slice(0,6).map(a => a.uid + '  →  ' + a.nombre + ' ' + a.apellidos).join('\n') : '(sin asistentes)';
   const uid = prompt('MODO SIMULACIÓN\nIntroduce el UID:\n\n' + lista);
   if (uid && uid.trim()) procesarLectura(uid.trim());
 };
 
 window.selectSala = function(s) {
   salaActiva = s;
-  document.getElementById('btn-servei').className  = 'sala-btn' + (s === 'servei'   ? ' sel' : '');
-  document.getElementById('btn-sidi').className    = 'sala-btn' + (s === 'sidi'     ? ' sel' : '');
-  document.getElementById('btn-talleres').className = 'sala-btn' + (s === 'talleres' ? ' sel' : '');
+  document.getElementById('btn-servei').className  = 'sala-btn' + (s==='servei'   ? ' sel' : '');
+  document.getElementById('btn-sidi').className    = 'sala-btn' + (s==='sidi'     ? ' sel' : '');
+  document.getElementById('btn-talleres').className = 'sala-btn' + (s==='talleres' ? ' sel' : '');
   resetScanner();
 };
 
-// ── NFC para formulario ───────────────────────────────────────────────────────
 window.readNfcForForm = async function() {
   const btn    = document.getElementById('btn-read-nfc');
   const status = document.getElementById('nfc-read-status');
   function setStatus(type, msg) {
-    status.style.display = 'block';
+    status.style.display    = 'block';
     status.style.background = type==='ok' ? 'var(--green-bg)' : type==='waiting' ? 'var(--blue-bg)' : 'var(--red-bg)';
-    status.style.border = '1px solid ' + (type==='ok' ? 'var(--green-border)' : type==='waiting' ? 'rgba(77,159,255,.3)' : 'var(--red-border)');
-    status.style.color  = type==='ok' ? 'var(--green)' : type==='waiting' ? 'var(--blue)' : 'var(--red)';
-    status.textContent  = msg;
+    status.style.border     = '1px solid ' + (type==='ok' ? 'var(--green-border)' : type==='waiting' ? 'rgba(77,159,255,.3)' : 'var(--red-border)');
+    status.style.color      = type==='ok' ? 'var(--green)' : type==='waiting' ? 'var(--blue)' : 'var(--red)';
+    status.textContent      = msg;
   }
   if ('NDEFReader' in window) {
     btn.textContent = 'Acerca la tarjeta…';
@@ -443,40 +412,29 @@ window.readNfcForForm = async function() {
       reader.addEventListener('reading', ({serialNumber}) => {
         const uid = serialNumber.toUpperCase().replace(/[:\s\-]/g, '');
         const existe = asistentes.find(a => a.uid === uid);
-        if (existe) {
-          setStatus('error', 'Tarjeta ya asignada a: ' + existe.nombre + ' ' + existe.apellidos);
-        } else {
-          document.getElementById('m-uid').value = uid;
-          setStatus('ok', 'UID leído: ' + uid);
-        }
-        btn.textContent = '📡 Leer tarjeta';
-        btn.disabled = false;
+        if (existe) { setStatus('error', 'Tarjeta ya asignada a: ' + existe.nombre + ' ' + existe.apellidos); }
+        else { document.getElementById('m-uid').value = uid; setStatus('ok', 'UID leído: ' + uid); }
+        btn.textContent = '📡 Leer tarjeta'; btn.disabled = false;
       }, {once: true});
     } catch(err) {
       setStatus('error', 'Error NFC: ' + err.message);
-      btn.textContent = '📡 Leer tarjeta';
-      btn.disabled = false;
+      btn.textContent = '📡 Leer tarjeta'; btn.disabled = false;
     }
   } else {
     const uid = prompt('MODO SIMULACIÓN\nIntroduce el UID de la nueva tarjeta:');
     if (uid && uid.trim()) {
       const clean = uid.trim().toUpperCase().replace(/[:\s\-]/g, '');
       const existe = asistentes.find(a => a.uid === clean);
-      if (existe) {
-        setStatus('error', 'Tarjeta ya asignada a: ' + existe.nombre + ' ' + existe.apellidos);
-      } else {
-        document.getElementById('m-uid').value = clean;
-        setStatus('ok', 'UID introducido: ' + clean);
-      }
+      if (existe) { setStatus('error', 'Tarjeta ya asignada a: ' + existe.nombre + ' ' + existe.apellidos); }
+      else { document.getElementById('m-uid').value = clean; setStatus('ok', 'UID introducido: ' + clean); }
     }
   }
 };
 
-// ── Renders ───────────────────────────────────────────────────────────────────
 function renderRecent() {
-  document.getElementById('recent-list').innerHTML = registros.slice(0, 6).map(r =>
+  document.getElementById('recent-list').innerHTML = registros.slice(0,6).map(r =>
     '<div class="ri"><div class="dot ' + (r.ok?'ok':'deny') + '"></div>' +
-    '<div style="flex:1;min-width:0;"><div class="ri-name">' + (r.nombre ? r.nombre+' '+r.apellidos : 'Desconocido') + '</div>' +
+    '<div style="flex:1;min-width:0;"><div class="ri-name">' + (r.nombre?r.nombre+' '+r.apellidos:'Desconocido') + '</div>' +
     '<div class="ri-info">' + r.sala + ' · ' + r.horaStr + '</div></div>' +
     '<div style="font-size:11px;color:' + (r.ok?'var(--green)':'var(--red)') + ';">' + (r.ok?'✓':'✕') + '</div></div>'
   ).join('');
@@ -487,8 +445,8 @@ function renderLog() {
   list.innerHTML = registros.length
     ? registros.map(r =>
         '<div class="log-item"><div class="dot ' + (r.ok?'ok':'deny') + '" style="margin-top:3px;"></div>' +
-        '<div><div class="log-name">' + (r.nombre ? r.nombre+' '+r.apellidos : 'Desconocido · '+r.uid) + '</div>' +
-        '<div class="log-meta">' + r.sala + (r.aId ? ' · '+r.uid : '') + '</div></div>' +
+        '<div><div class="log-name">' + (r.nombre?r.nombre+' '+r.apellidos:'Desconocido · '+r.uid) + '</div>' +
+        '<div class="log-meta">' + r.sala + (r.aId?' · '+r.uid:'') + '</div></div>' +
         '<div class="log-time">' + r.horaStr + '<br><span style="color:var(--text3)">' + r.fechaStr + '</span></div></div>'
       ).join('')
     : '<div class="empty-st">Sin registros todavía.</div>';
@@ -499,7 +457,7 @@ function renderLog() {
 }
 
 function renderAstTable() {
-  document.getElementById('ast-count').textContent = asistentes.length ? '(' + asistentes.length + ')' : '';
+  document.getElementById('ast-count').textContent = asistentes.length ? '('+asistentes.length+')' : '';
   document.getElementById('ast-tbody').innerHTML = asistentes.length
     ? asistentes.map(a =>
         '<tr><td class="mono">' + (a.id||'') + '</td>' +
@@ -513,7 +471,6 @@ function renderAstTable() {
     : '<tr><td colspan="7" style="color:var(--text3);text-align:center;padding:24px;font-size:12px;">Sin asistentes.</td></tr>';
 }
 
-// ── CRUD ──────────────────────────────────────────────────────────────────────
 window.addManual = async function() {
   const uid    = document.getElementById('m-uid').value.trim().toUpperCase().replace(/[:\s\-]/g, '');
   const nombre = document.getElementById('m-nombre').value.trim();
@@ -549,27 +506,21 @@ window.deleteAst = async function(docId) {
 window.clearAst = async function() {
   if (!confirm('¿Borrar TODOS los asistentes?')) return;
   const snap = await getDocs(colAst);
-  const b = writeBatch(db);
-  snap.docs.forEach(d => b.delete(d.ref));
-  await b.commit();
+  const b = writeBatch(db); snap.docs.forEach(d => b.delete(d.ref)); await b.commit();
 };
 
 window.clearRegistros = async function() {
   if (!confirm('¿Borrar todo el historial?')) return;
   const snap = await getDocs(colReg);
-  const b = writeBatch(db);
-  snap.docs.forEach(d => b.delete(d.ref));
-  await b.commit();
+  const b = writeBatch(db); snap.docs.forEach(d => b.delete(d.ref)); await b.commit();
 };
 
-// ── CSV Import ────────────────────────────────────────────────────────────────
 function detectSep(lines) {
-  const sample = lines.slice(0, 3).join('\n');
-  return (sample.match(/;/g)||[]).length > (sample.match(/,/g)||[]).length ? ';' : ',';
+  const s = lines.slice(0,3).join('\n');
+  return (s.match(/;/g)||[]).length > (s.match(/,/g)||[]).length ? ';' : ',';
 }
 
 function parseLine(l, sep) {
-  sep = sep || ',';
   const r = []; let c = '', q = false;
   for (let i = 0; i < l.length; i++) {
     const ch = l[i];
@@ -581,16 +532,14 @@ function parseLine(l, sep) {
 }
 
 function norm(s) {
-  return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+  return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
 }
 
 window.importCSV = async function(input) {
   const file = input.files[0]; if (!file) return;
   const fr = new FileReader();
   fr.onload = async function(e) {
-    const raw   = e.target.result.replace(/^﻿/, '').replace(/
-/g,'\n').replace(/
-/g,'\n');
+    const raw   = e.target.result.replace(/^\uFEFF/,'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
     const lines = raw.trim().split('\n').filter(l => l.trim());
     if (lines.length < 2) { showFb('error', 'Archivo vacío.'); return; }
     const sep    = detectSep(lines);
@@ -606,30 +555,29 @@ window.importCSV = async function(input) {
       sidi:     header.findIndex(h => h.includes('sidi')),
       talleres: header.findIndex(h => h.includes('taller')),
     };
-    if (fi.uid < 0)     { showFb('error', 'Columna UID no encontrada. Cabeceras: ' + header.join(', ')); return; }
-    if (fi.nombre < 0)  { showFb('error', 'Columna Nombre no encontrada.'); return; }
-    if (fi.servei < 0)  { showFb('error', 'Columna "Sala Plenaria SERVEI" no encontrada. Cabeceras: ' + header.join(', ')); return; }
-    if (fi.sidi < 0)    { showFb('error', 'Columna "Sala Plenaria SIDI" no encontrada. Cabeceras: ' + header.join(', ')); return; }
-    if (fi.talleres < 0){ showFb('error', 'Columna "Talleres" no encontrada. Cabeceras: ' + header.join(', ')); return; }
-
-    const existing = new Set(asistentes.map(a => a.uid));
+    if (fi.uid < 0)     { showFb('error', 'Columna UID no encontrada. Cabeceras leídas: ' + header.join(', ')); return; }
+    if (fi.nombre < 0)  { showFb('error', 'Columna nombre no encontrada.'); return; }
+    if (fi.servei < 0)  { showFb('error', 'Columna salaplenariaservei no encontrada. Cabeceras: ' + header.join(', ')); return; }
+    if (fi.sidi < 0)    { showFb('error', 'Columna salaplenariasidi no encontrada. Cabeceras: ' + header.join(', ')); return; }
+    if (fi.talleres < 0){ showFb('error', 'Columna talleres no encontrada. Cabeceras: ' + header.join(', ')); return; }
     const siNo = v => {
-      const s = (v||'').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      const s = (v||'').toString().trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
       return ['SI','S','1','TRUE','VERDADERO','YES'].includes(s);
     };
+    const existing = new Set(asistentes.map(a => a.uid));
     let imp = 0, omit = 0;
     const nuevos = [];
     lines.slice(1).forEach((line, i) => {
       const c   = parseLine(line, sep);
-      const uid = (c[fi.uid]||'').toUpperCase().replace(/[:\s\-]/g, '');
+      const uid = (c[fi.uid]||'').toUpperCase().replace(/[:\s\-]/g,'');
       if (!uid || existing.has(uid)) { omit++; return; }
       nuevos.push({
         uid,
-        id:           fi.id >= 0       ? c[fi.id].trim()        : String(i+1),
-        nombre:       fi.nombre >= 0   ? c[fi.nombre].trim()    : '',
-        apellidos:    fi.apellidos >= 0 ? c[fi.apellidos].trim() : '',
-        email:        fi.email >= 0    ? c[fi.email].trim()     : '',
-        telefono:     fi.telefono >= 0  ? c[fi.telefono].trim()  : '',
+        id:           fi.id >= 0        ? String(c[fi.id]||'').trim()        : String(i+1),
+        nombre:       fi.nombre >= 0    ? String(c[fi.nombre]||'').trim()    : '',
+        apellidos:    fi.apellidos >= 0  ? String(c[fi.apellidos]||'').trim() : '',
+        email:        fi.email >= 0     ? String(c[fi.email]||'').trim()     : '',
+        telefono:     fi.telefono >= 0   ? String(c[fi.telefono]||'').trim()  : '',
         salaServei:   siNo(c[fi.servei]),
         salaSidi:     siNo(c[fi.sidi]),
         salaTalleres: siNo(c[fi.talleres]),
@@ -642,179 +590,23 @@ window.importCSV = async function(input) {
       await b.commit();
     }
     input.value = '';
-    if (imp > 0 && omit === 0) showFb('ok', '✓ ' + imp + ' asistentes importados. Separador: "' + sep + '"');
-    else if (imp > 0)           showFb('ok', '✓ ' + imp + ' importados. ' + omit + ' omitidos (duplicados o sin UID).');
-    else                        showFb('error', 'No se importó ningún asistente. Separador: "' + sep + '". Cabeceras: ' + header.join(', '));
+    if (imp > 0 && omit === 0) showFb('ok', '✓ ' + imp + ' asistentes importados correctamente.');
+    else if (imp > 0)           showFb('ok', '✓ ' + imp + ' importados. ' + omit + ' omitidos.');
+    else                        showFb('error', 'No se importó ningún asistente. Cabeceras detectadas: ' + header.join(', '));
   };
   fr.readAsText(file, 'UTF-8');
 };
 
-// ── Google Drive Import ──────────────────────────────────────────────────────
-const GOOG_CLIENT_ID = '54196258743-392lur7317v69c6vm8bl5a730coe3iid.apps.googleusercontent.com';
-const GOOG_SCOPES    = 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/spreadsheets.readonly';
-let gapiReady = false, gisReady = false, tokenClient = null, accessToken = null;
-
-function waitForGapi(cb) {
-  if (typeof gapi !== 'undefined') { cb(); return; }
-  setTimeout(() => waitForGapi(cb), 200);
-}
-function waitForGoogle(cb) {
-  if (typeof google !== 'undefined' && google.accounts) { cb(); return; }
-  setTimeout(() => waitForGoogle(cb), 200);
-}
-
-waitForGapi(() => {
-  gapi.load('client:picker', async () => {
-    await gapi.client.init({});
-    await gapi.client.load('https://sheets.googleapis.com/$discovery/rest?version=v4');
-    gapiReady = true;
-  });
-});
-
-waitForGoogle(() => {
-  tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: GOOG_CLIENT_ID,
-    scope: GOOG_SCOPES,
-    callback: async (resp) => {
-      if (resp.error) { showDriveFb('error', 'Error de autenticación: ' + resp.error); return; }
-      accessToken = resp.access_token;
-      openPicker();
-    }
-  });
-  gisReady = true;
-});
-
-function showDriveFb(type, msg) {
-  const el = document.getElementById('drive-fb');
-  el.style.display    = 'block';
-  el.style.background = type==='ok' ? 'var(--green-bg)' : type==='info' ? 'var(--blue-bg)' : 'var(--red-bg)';
-  el.style.border     = '1px solid ' + (type==='ok' ? 'var(--green-border)' : type==='info' ? 'rgba(77,159,255,.3)' : 'var(--red-border)');
-  el.style.color      = type==='ok' ? 'var(--green)' : type==='info' ? 'var(--blue)' : 'var(--red)';
-  el.textContent      = msg;
-  if (type !== 'info') setTimeout(() => el.style.display = 'none', 7000);
-}
-
-window.importFromDrive = function() {
-  if (!gapiReady || !gisReady) { showDriveFb('error', 'Cargando APIs de Google… espera un momento e inténtalo de nuevo.'); return; }
-  const btn = document.getElementById('btn-drive');
-  btn.disabled = true;
-  btn.textContent = 'Conectando con Google…';
-  if (accessToken) {
-    openPicker();
-  } else {
-    tokenClient.requestAccessToken({prompt: 'consent'});
-  }
-};
-
-function openPicker() {
-  const btn = document.getElementById('btn-drive');
-  btn.disabled = false;
-  btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6.5 20L1 11l4.5-8h13L23 11l-5.5 9H6.5z" stroke="currentColor" stroke-width="1.5"/><path d="M1 11h22M8.5 3l-3 8M15.5 3l3 8M6.5 20l5.5-9 5.5 9" stroke="currentColor" stroke-width="1.5"/></svg> Importar desde Google Drive';
-  const picker = new google.picker.PickerBuilder()
-    .addView(new google.picker.DocsView(google.picker.ViewId.SPREADSHEETS).setIncludeFolders(true))
-    .setOAuthToken(accessToken)
-    .setDeveloperKey('')
-    .setCallback(pickerCallback)
-    .setTitle('Selecciona tu hoja de cálculo')
-    .build();
-  picker.setVisible(true);
-}
-
-async function pickerCallback(data) {
-  if (data.action !== google.picker.Action.PICKED) return;
-  const file = data.docs[0];
-  showDriveFb('info', 'Leyendo hoja: ' + file.name + '…');
-  try {
-    // Get all sheets in the spreadsheet
-    const meta = await gapi.client.sheets.spreadsheets.get({ spreadsheetId: file.id });
-    const sheets = meta.result.sheets;
-    let sheetName = sheets[0].properties.title;
-    // If multiple sheets, ask which one
-    if (sheets.length > 1) {
-      const names = sheets.map((s,i) => (i+1)+'. '+s.properties.title).join('
-');
-      const choice = prompt('El archivo tiene varias hojas. ¿Cuál quieres importar?
-
-' + names + '
-
-Escribe el número:');
-      const idx = parseInt(choice) - 1;
-      if (!isNaN(idx) && idx >= 0 && idx < sheets.length) sheetName = sheets[idx].properties.title;
-    }
-    // Fetch sheet data
-    const resp = await gapi.client.sheets.spreadsheets.values.get({
-      spreadsheetId: file.id,
-      range: sheetName,
-    });
-    const rows = resp.result.values;
-    if (!rows || rows.length < 2) { showDriveFb('error', 'La hoja está vacía o solo tiene cabecera.'); return; }
-    // Process rows — same logic as CSV but data is already parsed into arrays
-    const header = rows[0].map(h => norm(String(h)));
-    const fi = {
-      uid:      header.findIndex(h => h === 'uid'),
-      id:       header.findIndex(h => h === 'id'),
-      nombre:   header.findIndex(h => h === 'nombre'),
-      apellidos:header.findIndex(h => h === 'apellidos' || h === 'apellido'),
-      email:    header.findIndex(h => h === 'email'),
-      telefono: header.findIndex(h => h === 'telefono' || h === 'tlf' || h === 'phone'),
-      servei:   header.findIndex(h => h.includes('servei')),
-      sidi:     header.findIndex(h => h.includes('sidi')),
-      talleres: header.findIndex(h => h.includes('taller')),
-    };
-    if (fi.uid < 0)     { showDriveFb('error', 'Columna UID no encontrada. Cabeceras: ' + header.join(', ')); return; }
-    if (fi.nombre < 0)  { showDriveFb('error', 'Columna Nombre no encontrada.'); return; }
-    if (fi.servei < 0)  { showDriveFb('error', 'Columna SERVEI no encontrada. Cabeceras: ' + header.join(', ')); return; }
-    if (fi.sidi < 0)    { showDriveFb('error', 'Columna SIDI no encontrada. Cabeceras: ' + header.join(', ')); return; }
-    if (fi.talleres < 0){ showDriveFb('error', 'Columna Talleres no encontrada. Cabeceras: ' + header.join(', ')); return; }
-    const siNo = v => {
-      const s = (v||'').toString().trim().toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
-      return ['SI','S','1','TRUE','VERDADERO','YES'].includes(s);
-    };
-    const existing = new Set(asistentes.map(a => a.uid));
-    let imp = 0, omit = 0;
-    const nuevos = [];
-    rows.slice(1).forEach((row, i) => {
-      const uid = (row[fi.uid]||'').toString().toUpperCase().replace(/[:\s\-]/g,'');
-      if (!uid || existing.has(uid)) { omit++; return; }
-      nuevos.push({
-        uid,
-        id:           fi.id >= 0        ? String(row[fi.id]||'').trim()        : String(i+1),
-        nombre:       fi.nombre >= 0    ? String(row[fi.nombre]||'').trim()    : '',
-        apellidos:    fi.apellidos >= 0  ? String(row[fi.apellidos]||'').trim() : '',
-        email:        fi.email >= 0     ? String(row[fi.email]||'').trim()     : '',
-        telefono:     fi.telefono >= 0   ? String(row[fi.telefono]||'').trim()  : '',
-        salaServei:   siNo(row[fi.servei]),
-        salaSidi:     siNo(row[fi.sidi]),
-        salaTalleres: siNo(row[fi.talleres]),
-      });
-      existing.add(uid); imp++;
-    });
-    for (let i = 0; i < nuevos.length; i += 500) {
-      const b = writeBatch(db);
-      nuevos.slice(i, i+500).forEach(a => b.set(doc(colAst, a.uid), a));
-      await b.commit();
-    }
-    if (imp > 0 && omit === 0) showDriveFb('ok', '✓ ' + imp + ' asistentes importados desde "' + file.name + '".');
-    else if (imp > 0)           showDriveFb('ok', '✓ ' + imp + ' importados. ' + omit + ' omitidos (duplicados o sin UID).');
-    else                        showDriveFb('error', 'No se importó ningún asistente. Cabeceras detectadas: ' + header.join(', '));
-  } catch(err) {
-    showDriveFb('error', 'Error al leer la hoja: ' + err.message);
-    console.error(err);
-  }
-}
-
-// ── Export ────────────────────────────────────────────────────────────────────
 window.exportCSV = function() {
   if (!registros.length) { alert('No hay registros todavía.'); return; }
   const rows = [['Nombre','Apellidos','UID','Sala','Acceso','Hora','Fecha']];
   registros.forEach(r => rows.push([r.nombre||'Desconocido', r.apellidos||'', r.uid, r.sala, r.ok?'OK':'DENEGADO', r.horaStr, r.fechaStr]));
   const csv  = rows.map(r => r.map(v => '"' + String(v).replace(/"/g,'""') + '"').join(',')).join('\n');
-  const blob = new Blob(['\uFEFF' + csv], {type:'text/csv;charset=utf-8'});
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'});
   const a    = document.createElement('a');
   a.href = URL.createObjectURL(blob); a.download = 'registro-asistencia.csv'; a.click();
 };
 
-// ── Vistas ────────────────────────────────────────────────────────────────────
 window.showView = function(v, btn) {
   document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
@@ -827,9 +619,9 @@ window.showView = function(v, btn) {
 function showFb(type, msg) {
   const el = document.getElementById('imp-fb');
   el.style.display    = 'block';
-  el.style.background = type === 'ok' ? 'var(--green-bg)' : 'var(--red-bg)';
-  el.style.border     = '1px solid ' + (type === 'ok' ? 'var(--green-border)' : 'var(--red-border)');
-  el.style.color      = type === 'ok' ? 'var(--green)' : 'var(--red)';
+  el.style.background = type==='ok' ? 'var(--green-bg)' : 'var(--red-bg)';
+  el.style.border     = '1px solid ' + (type==='ok' ? 'var(--green-border)' : 'var(--red-border)');
+  el.style.color      = type==='ok' ? 'var(--green)' : 'var(--red)';
   el.textContent      = msg;
   setTimeout(() => el.style.display = 'none', 7000);
 }
