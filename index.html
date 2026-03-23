@@ -9,21 +9,6 @@
   :root{--bg:#0a0a0f;--surface:#13131a;--surface2:#1c1c27;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);--text:#f0f0f5;--text2:#8888a0;--text3:#55556a;--green:#00e57a;--green-bg:rgba(0,229,122,0.1);--green-border:rgba(0,229,122,0.25);--red:#ff4d6a;--red-bg:rgba(255,77,106,0.1);--red-border:rgba(255,77,106,0.25);--amber:#ffb347;--amber-bg:rgba(255,179,71,0.08);--blue:#4d9fff;--blue-bg:rgba(77,159,255,0.1);--radius:12px;--radius-sm:8px;}
   *{box-sizing:border-box;margin:0;padding:0;}
   body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
-  .pin-screen{position:fixed;inset:0;background:var(--bg);z-index:200;display:flex;align-items:center;justify-content:center;padding:24px;}
-  .pin-screen.hidden{display:none;}
-  .pin-box{width:100%;max-width:320px;text-align:center;}
-  .pin-logo{font-family:'DM Mono',monospace;font-size:15px;color:var(--text2);letter-spacing:.1em;margin-bottom:32px;}
-  .pin-logo span{color:var(--green);}
-  .pin-title{font-size:18px;font-weight:600;margin-bottom:6px;}
-  .pin-sub{font-size:13px;color:var(--text2);margin-bottom:28px;}
-  .pin-dots{display:flex;justify-content:center;gap:14px;margin-bottom:28px;}
-  .pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--border2);transition:all .15s;}
-  .pin-dot.filled{background:var(--green);border-color:var(--green);}
-  .pin-dot.error{background:var(--red);border-color:var(--red);}
-  .pin-keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
-  .pin-key{padding:18px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--surface);color:var(--text);font-size:20px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .1s;user-select:none;}
-  .pin-key:active{background:var(--surface2);transform:scale(.95);}
-  .pin-error{font-size:12px;color:var(--red);margin-top:16px;height:18px;font-family:'DM Mono',monospace;}
   .sync-bar{display:flex;align-items:center;justify-content:center;gap:8px;padding:8px 16px;font-size:11px;font-family:'DM Mono',monospace;transition:all .3s;}
   .sync-bar.connecting{background:var(--amber-bg);color:var(--amber);}
   .sync-bar.live{background:var(--green-bg);color:var(--green);}
@@ -41,7 +26,7 @@
   .view.active{display:block;}
   .sala-lbl{font-size:11px;letter-spacing:.1em;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:8px;font-family:'DM Mono',monospace;}
   .sala-btns{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;}
-  .sala-btn{padding:10px 22px;border-radius:var(--radius-sm);border:1px solid var(--border2);background:var(--surface);color:var(--text2);font-size:14px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;}
+  .sala-btn{padding:10px 18px;border-radius:var(--radius-sm);border:1px solid var(--border2);background:var(--surface);color:var(--text2);font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;}
   .sala-btn.sel{border-color:var(--green);color:var(--green);background:var(--green-bg);}
   .scanner-area{border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);padding:44px 24px;text-align:center;margin-bottom:18px;transition:border-color .3s,background .3s;}
   .scanner-area.ok{border-color:var(--green);background:var(--green-bg);}
@@ -119,46 +104,17 @@
   .del-btn:hover{border-color:var(--red);}
   .manual-form{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:10px;}
   .mft{font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:12px;text-transform:uppercase;letter-spacing:.08em;}
-  .checks-row{display:flex;gap:16px;margin:8px 0 12px;}
+  .checks-row{display:flex;gap:12px;flex-wrap:wrap;margin:8px 0 12px;}
   .loading-overlay{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:100;}
   .loading-overlay.hidden{display:none;}
   .spinner{width:36px;height:36px;border:2px solid var(--border2);border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite;}
   @keyframes spin{to{transform:rotate(360deg)}}
+  .nfc-status{font-size:12px;font-family:'DM Mono',monospace;padding:8px 12px;border-radius:var(--radius-sm);margin-bottom:8px;display:none;}
 </style>
 </head>
 <body>
 
-<!-- PIN -->
-<div class="pin-screen" id="pin-screen">
-  <div class="pin-box">
-    <div class="pin-logo">NFC<span>·</span>ACCESS</div>
-    <div class="pin-title">Acceso restringido</div>
-    <div class="pin-sub">Introduce el PIN para continuar</div>
-    <div class="pin-dots">
-      <div class="pin-dot" id="pd0"></div>
-      <div class="pin-dot" id="pd1"></div>
-      <div class="pin-dot" id="pd2"></div>
-      <div class="pin-dot" id="pd3"></div>
-    </div>
-    <div class="pin-keypad">
-      <button class="pin-key" onclick="pinKey('1')">1</button>
-      <button class="pin-key" onclick="pinKey('2')">2</button>
-      <button class="pin-key" onclick="pinKey('3')">3</button>
-      <button class="pin-key" onclick="pinKey('4')">4</button>
-      <button class="pin-key" onclick="pinKey('5')">5</button>
-      <button class="pin-key" onclick="pinKey('6')">6</button>
-      <button class="pin-key" onclick="pinKey('7')">7</button>
-      <button class="pin-key" onclick="pinKey('8')">8</button>
-      <button class="pin-key" onclick="pinKey('9')">9</button>
-      <button class="pin-key" onclick="pinKey('0')" style="grid-column:2">0</button>
-      <button class="pin-key" onclick="pinDel()" style="font-size:16px;color:var(--text2)">&#x232B;</button>
-    </div>
-    <div class="pin-error" id="pin-error"></div>
-  </div>
-</div>
-
-<!-- Loading -->
-<div class="loading-overlay hidden" id="loading">
+<div class="loading-overlay" id="loading">
   <div class="spinner"></div>
   <div style="font-size:13px;color:var(--text2);font-family:'DM Mono',monospace;">Conectando…</div>
 </div>
@@ -182,8 +138,8 @@
   <span class="sala-lbl">Sala activa</span>
   <div class="sala-btns">
     <button class="sala-btn sel" id="btn-servei"   onclick="selectSala('servei')">Sala Plenaria SERVEI</button>
-    <button class="sala-btn"     id="btn-sidi"     onclick="selectSala('sidi')">Sala Plenaria SIDI</button>
-    <button class="sala-btn"     id="btn-talleres" onclick="selectSala('talleres')">Talleres</button>
+    <button class="sala-btn"    id="btn-sidi"      onclick="selectSala('sidi')">Sala Plenaria SIDI</button>
+    <button class="sala-btn"    id="btn-talleres"  onclick="selectSala('talleres')">Talleres</button>
   </div>
   <div class="nfc-warn" id="nfc-warn"></div>
   <div class="scanner-area" id="scan-area">
@@ -220,18 +176,24 @@
 
 <!-- ADMIN -->
 <div id="view-admin" class="view">
+
   <div class="adm-sec">
     <h3>Importar asistentes desde CSV</h3>
     <div class="drop-zone" onclick="document.getElementById('csv-input').click()">
       <div style="font-size:28px;margin-bottom:10px;">📄</div>
-      <div style="font-size:14px;font-weight:500;color:var(--text);margin-bottom:4px;">Selecciona el CSV exportado de Google Sheets</div>
+      <div style="font-size:14px;font-weight:500;color:var(--text);margin-bottom:4px;">Selecciona el CSV exportado de Google Sheets o Excel</div>
       <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">Se sincroniza en todos los dispositivos automáticamente</div>
       <input type="file" id="csv-input" accept=".csv,.txt" style="display:none" onchange="importCSV(this)">
     </div>
     <div class="imp-fb" id="imp-fb"></div>
     <div class="fmt-box">
       <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:8px;">COLUMNAS DETECTADAS AUTOMÁTICAMENTE</div>
-      <div style="font-size:12px;color:var(--text2);font-family:'DM Mono',monospace;line-height:2;">UID · ID · Nombre · Apellidos · Email · Teléfono<br>Sala Plenaria SERVEI <span style="color:var(--green)">SI</span>/<span style="color:var(--red)">NO</span><br>Sala Plenaria SIDI <span style="color:var(--green)">SI</span>/<span style="color:var(--red)">NO</span><br>Talleres <span style="color:var(--green)">SI</span>/<span style="color:var(--red)">NO</span></div>
+      <div style="font-size:12px;color:var(--text2);font-family:'DM Mono',monospace;line-height:2;">
+        UID · ID · NOMBRE · APELLIDOS · EMAIL · TELEFONO<br>
+        SALA PLENARIA SERVEI <span style="color:var(--green)">SI</span>/<span style="color:var(--red)">NO</span><br>
+        SALA PLENARIA SIDI <span style="color:var(--green)">SI</span>/<span style="color:var(--red)">NO</span><br>
+        TALLERES <span style="color:var(--green)">SI</span>/<span style="color:var(--red)">NO</span>
+      </div>
     </div>
   </div>
 
@@ -241,9 +203,9 @@
       <div class="mft">Nuevo asistente</div>
       <div class="form-row" style="align-items:center;">
         <input class="form-input" id="m-uid" placeholder="UID NFC (obligatorio)" style="flex:1;">
-        <button class="btn-add" id="btn-read-nfc" onclick="readNfcForForm()" style="white-space:nowrap;flex-shrink:0;">&#x1F4E1; Leer tarjeta</button>
+        <button class="btn-add" id="btn-read-nfc" onclick="readNfcForForm()" style="white-space:nowrap;flex-shrink:0;">📡 Leer tarjeta</button>
       </div>
-      <div id="nfc-read-status" style="display:none;font-size:12px;font-family:'DM Mono',monospace;padding:8px 12px;border-radius:var(--radius-sm);margin-bottom:8px;"></div>
+      <div id="nfc-read-status" class="nfc-status"></div>
       <div class="form-row">
         <input class="form-input" id="m-id" placeholder="ID interno">
       </div>
@@ -252,8 +214,8 @@
         <input class="form-input" id="m-apellidos" placeholder="Apellidos">
       </div>
       <div class="form-row">
-        <input class="form-input" id="m-email"     placeholder="Email">
-        <input class="form-input" id="m-telefono"  placeholder="Teléfono">
+        <input class="form-input" id="m-email"    placeholder="Email">
+        <input class="form-input" id="m-telefono" placeholder="Teléfono">
       </div>
       <div class="checks-row">
         <label class="form-check"><input type="checkbox" id="m-servei"   checked> Sala Plenaria SERVEI</label>
@@ -269,358 +231,222 @@
     <div class="tw">
       <table>
         <thead><tr><th>ID</th><th>Nombre</th><th>UID NFC</th><th>SERVEI</th><th>SIDI</th><th>Talleres</th><th></th></tr></thead>
-        <tbody id="ast-tbody"><tr><td colspan="6" style="color:var(--text3);text-align:center;padding:24px;font-size:12px;">Cargando…</td></tr></tbody>
+        <tbody id="ast-tbody"><tr><td colspan="7" style="color:var(--text3);text-align:center;padding:24px;font-size:12px;">Cargando…</td></tr></tbody>
       </table>
     </div>
     <button class="exp-btn del-btn" onclick="clearAst()">Borrar todos los asistentes</button>
   </div>
 
-  <div class="adm-sec">
-    <h3>Cambiar PIN de acceso</h3>
-    <div class="manual-form">
-      <div class="mft">PIN actual: 4 dígitos</div>
-      <div class="form-row">
-        <input class="form-input" id="pin-curr" type="password" inputmode="numeric" maxlength="4" placeholder="PIN actual">
-        <input class="form-input" id="pin-new"  type="password" inputmode="numeric" maxlength="4" placeholder="PIN nuevo">
-        <input class="form-input" id="pin-conf" type="password" inputmode="numeric" maxlength="4" placeholder="Confirmar">
-      </div>
-      <button class="btn-add" style="width:100%;padding:12px;" onclick="changePin()">Guardar nuevo PIN</button>
-      <div class="imp-fb" id="pin-fb" style="margin-top:10px;margin-bottom:0;"></div>
-    </div>
-  </div>
-
-  <div class="adm-sec" style="margin-bottom:8px;">
-    <button class="exp-btn del-btn" style="margin-top:0;" onclick="logout()">Cerrar sesión</button>
-  </div>
 </div>
 
-
-<script>
-// PIN UI — plain script so onclick handlers work immediately
-var _pinBuffer = '';
-var _pinReady  = false;
-var _pendingCheck = false;
-
-window.pinKey = function(d) {
-  if (_pinBuffer.length >= 4) return;
-  _pinBuffer += d;
-  _updateDots(false);
-  if (_pinBuffer.length === 4) {
-    var buf = _pinBuffer;
-    _pinBuffer = '';
-    if (window.__checkPin) {
-      window.__checkPin(buf);
-    } else {
-      // Firebase still loading — show waiting message and keep retrying
-      document.getElementById('pin-error').textContent = 'Conectando…';
-      var tries = 0;
-      var wait = setInterval(function(){
-        tries++;
-        if (window.__checkPin) {
-          clearInterval(wait);
-          document.getElementById('pin-error').textContent = '';
-          window.__checkPin(buf);
-        } else if (tries > 150) {
-          // 15 seconds max
-          clearInterval(wait);
-          document.getElementById('pin-error').textContent = 'Sin conexión. Comprueba internet y recarga.';
-        }
-      }, 100);
-    }
-  }
-};
-
-window.pinDel = function() {
-  _pinBuffer = _pinBuffer.slice(0, -1);
-  _updateDots(false);
-};
-
-function _updateDots(err) {
-  for (var i = 0; i < 4; i++) {
-    var d = document.getElementById('pd' + i);
-    if (!d) continue;
-    d.className = 'pin-dot';
-    if (err) d.classList.add('error');
-    else if (i < _pinBuffer.length) d.classList.add('filled');
-  }
-}
-
-// Expose so module can call it too
-window._updateDots = _updateDots;
-window._setPinReady = function() { _pinReady = true; };
-</script>
 <script type="module">
 import { initializeApp }   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, collection, doc, setDoc, getDoc,
+import { getFirestore, collection, doc, setDoc,
          deleteDoc, onSnapshot, addDoc, query, orderBy,
          writeBatch, getDocs, serverTimestamp }
                            from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
-const PIN_DEFAULT = '1234';
 const firebaseConfig = {
-  apiKey:"AIzaSyDJJxuxk4hLrQ3X2zWfvGi4y5v3KiuIBJY",
-  authDomain:"nfc-acceso.firebaseapp.com",
-  projectId:"nfc-acceso",
-  storageBucket:"nfc-acceso.firebasestorage.app",
-  messagingSenderId:"54196258743",
-  appId:"1:54196258743:web:ec2cb759095dc21b9a4a32"
+  apiKey:            "AIzaSyDJJxuxk4hLrQ3X2zWfvGi4y5v3KiuIBJY",
+  authDomain:        "nfc-acceso.firebaseapp.com",
+  projectId:         "nfc-acceso",
+  storageBucket:     "nfc-acceso.firebasestorage.app",
+  messagingSenderId: "54196258743",
+  appId:             "1:54196258743:web:ec2cb759095dc21b9a4a32"
 };
+
 const app    = initializeApp(firebaseConfig);
 const db     = getFirestore(app);
-const colAst = collection(db,'asistentes');
-const colReg = collection(db,'registros');
-const cfgRef = doc(db,'config','app');
+const colAst = collection(db, 'asistentes');
+const colReg = collection(db, 'registros');
 
-let currentPin=PIN_DEFAULT;
-let asistentes=[], registros=[], salaActiva='servei', scanning=false;
+let asistentes = [], registros = [], salaActiva = 'servei', scanning = false;
 
-// ── PIN ───────────────────────────────────────────────────────────────────────
-async function loadPin(){
-  try{ const s=await getDoc(cfgRef); if(s.exists()&&s.data().pin) currentPin=s.data().pin; }catch(e){}
-}
-
-function checkPin(pin){
-  if(pin===currentPin){
-    sessionStorage.setItem('nfc_unlocked','1');
-    document.getElementById('pin-screen').classList.add('hidden');
-    document.getElementById('loading').classList.remove('hidden');
-    initFirestore();
-  } else {
-    window._updateDots(true);
-    document.getElementById('pin-error').textContent='PIN incorrecto';
-    setTimeout(()=>{ window._updateDots(false); document.getElementById('pin-error').textContent=''; },1000);
-  }
-}
-
-window.logout=function(){ sessionStorage.removeItem('nfc_unlocked'); location.reload(); };
-
-window.changePin=async function(){
-  const curr=document.getElementById('pin-curr').value.trim();
-  const nuevo=document.getElementById('pin-new').value.trim();
-  const conf=document.getElementById('pin-conf').value.trim();
-  if(curr!==currentPin){ pinFb('error','PIN actual incorrecto.'); return; }
-  if(!/^\d{4}$/.test(nuevo)){ pinFb('error','El PIN debe tener exactamente 4 dígitos.'); return; }
-  if(nuevo!==conf){ pinFb('error','Los PINs nuevos no coinciden.'); return; }
-  try{
-    await setDoc(cfgRef,{pin:nuevo},{merge:true});
-    currentPin=nuevo;
-    ['pin-curr','pin-new','pin-conf'].forEach(id=>document.getElementById(id).value='');
-    pinFb('ok','PIN actualizado en todos los dispositivos.');
-  }catch(e){ pinFb('error','Error: '+e.message); }
-};
-
-function pinFb(type,msg){
-  const el=document.getElementById('pin-fb');
-  el.style.display='block';
-  el.style.background=type==='ok'?'var(--green-bg)':'var(--red-bg)';
-  el.style.border='1px solid '+(type==='ok'?'var(--green-border)':'var(--red-border)');
-  el.style.color=type==='ok'?'var(--green)':'var(--red)';
-  el.textContent=msg;
-  setTimeout(()=>el.style.display='none',5000);
-}
-
-// ── Init ──────────────────────────────────────────────────────────────────────
-// Expose checkPin immediately with default PIN — works even if Firebase is slow
-window.__checkPin = checkPin;
-window._setPinReady();
-
-// Then try to load the real PIN from Firebase (may update currentPin)
-loadPin().catch(()=>{});  // never blocks
-
-if(sessionStorage.getItem('nfc_unlocked')==='1'){
-  document.getElementById('pin-screen').classList.add('hidden');
-  document.getElementById('loading').classList.remove('hidden');
-  initFirestore();
+// ── Sync status ───────────────────────────────────────────────────────────────
+function setSyncStatus(state, msg) {
+  document.getElementById('sync-bar').className = 'sync-bar ' + state;
+  document.getElementById('sync-dot').className = 'sync-dot' + (state === 'connecting' ? ' pulse' : '');
+  document.getElementById('sync-txt').textContent = msg;
 }
 
 // ── Firestore listeners ───────────────────────────────────────────────────────
-function setSyncStatus(state,msg){
-  document.getElementById('sync-bar').className='sync-bar '+state;
-  document.getElementById('sync-dot').className='sync-dot'+(state==='connecting'?' pulse':'');
-  document.getElementById('sync-txt').textContent=msg;
-}
+onSnapshot(colAst, snap => {
+  asistentes = snap.docs.map(d => ({...d.data(), _docId: d.id}));
+  renderAstTable();
+  renderRecent();
+}, err => {
+  setSyncStatus('error', 'Error: ' + err.message);
+  document.getElementById('loading').classList.add('hidden');
+});
 
-function initFirestore(){
-  onSnapshot(colAst,snap=>{
-    asistentes=snap.docs.map(d=>({...d.data(),_docId:d.id}));
-    renderAstTable(); renderRecent();
-  },()=>setSyncStatus('error','Error de conexión'));
+const qReg = query(colReg, orderBy('ts', 'desc'));
+onSnapshot(qReg, snap => {
+  registros = snap.docs.map(d => ({...d.data(), _docId: d.id}));
+  renderRecent();
+  renderLog();
+  document.getElementById('loading').classList.add('hidden');
+  setSyncStatus('live', 'Sincronizado en tiempo real');
+}, err => {
+  setSyncStatus('error', 'Error: ' + err.message);
+  document.getElementById('loading').classList.add('hidden');
+});
 
-  const qReg=query(colReg,orderBy('ts','desc'));
-  onSnapshot(qReg,snap=>{
-    registros=snap.docs.map(d=>({...d.data(),_docId:d.id}));
-    renderRecent(); renderLog();
-    document.getElementById('loading').classList.add('hidden');
-    setSyncStatus('live','Sincronizado en tiempo real');
-  },()=>{ setSyncStatus('error','Error de conexión'); document.getElementById('loading').classList.add('hidden'); });
+// ── Acceso ────────────────────────────────────────────────────────────────────
+function puedeAcceder(a) {
+  return salaActiva === 'servei' ? a.salaServei : salaActiva === 'sidi' ? a.salaSidi : a.salaTalleres;
 }
 
 // ── Lector ────────────────────────────────────────────────────────────────────
-function puedeAcceder(a){ return salaActiva==='servei'?a.salaServei:salaActiva==='sidi'?a.salaSidi:a.salaTalleres; }
-
-async function procesarLectura(raw){
-  const uid=raw.toUpperCase().replace(/[:\s\-]/g,'');
-  const a=asistentes.find(x=>x.uid===uid);
-  const hora=new Date();
-  const horaStr=hora.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  const fechaStr=hora.toLocaleDateString('es-ES');
-  const sala=salaActiva==='servei'?'Sala Plenaria SERVEI':salaActiva==='sidi'?'Sala Plenaria SIDI':'Talleres';
-  if(!a){ showUnknown(uid,horaStr,sala); return; }
-  const ok=puedeAcceder(a);
-  try{ await addDoc(colReg,{uid,sala,ok,horaStr,fechaStr,aId:a.uid,nombre:a.nombre,apellidos:a.apellidos,ts:serverTimestamp()}); }catch(e){console.error(e);}
-  showResult(a,ok,horaStr,sala);
+async function procesarLectura(raw) {
+  const uid  = raw.toUpperCase().replace(/[:\s\-]/g, '');
+  const a    = asistentes.find(x => x.uid === uid);
+  const hora = new Date();
+  const horaStr  = hora.toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  const fechaStr = hora.toLocaleDateString('es-ES');
+  const sala = salaActiva === 'servei' ? 'Sala Plenaria SERVEI' : salaActiva === 'sidi' ? 'Sala Plenaria SIDI' : 'Talleres';
+  if (!a) { showUnknown(uid, horaStr, sala); return; }
+  const ok = puedeAcceder(a);
+  try {
+    await addDoc(colReg, {uid, sala, ok, horaStr, fechaStr, aId: a.uid, nombre: a.nombre, apellidos: a.apellidos, ts: serverTimestamp()});
+  } catch(e) { console.error(e); }
+  showResult(a, ok, horaStr, sala);
 }
 
-function showResult(a,ok,horaStr,sala){
-  const cl=ok?'ok':'deny';
-  document.getElementById('scan-area').className='scanner-area '+cl;
-  document.getElementById('scan-ring').className='scan-ring '+cl;
-  document.getElementById('scan-icon').textContent=ok?'✓':'✕';
-  document.getElementById('scan-title').textContent=ok?'Acceso permitido':'Acceso denegado';
-  document.getElementById('scan-sub').textContent=sala+' · '+horaStr;
-  document.getElementById('result-card').className='result-card show '+cl;
-  document.getElementById('rbadge').textContent=ok?'ACCESO OK':'DENEGADO';
-  document.getElementById('rbadge').className='rbadge '+cl;
-  document.getElementById('rname').textContent=a.nombre+' '+a.apellidos;
-  document.getElementById('rmeta').textContent='ID '+a.id+(a.email?' · '+a.email:'');
-  document.getElementById('acceso-single-wrap').innerHTML='<div class="acceso-single '+(ok?'si':'no')+'"><span style="font-size:20px;">'+(ok?'✓':'✕')+'</span>'+sala+'</div>';
-  document.getElementById('rdetail').textContent=ok?'Entrada registrada a las '+horaStr+'.':'Sin permiso para '+sala+'.';
-  setTimeout(resetScanner,5000);
+function showResult(a, ok, horaStr, sala) {
+  const cl = ok ? 'ok' : 'deny';
+  document.getElementById('scan-area').className  = 'scanner-area ' + cl;
+  document.getElementById('scan-ring').className  = 'scan-ring ' + cl;
+  document.getElementById('scan-icon').textContent  = ok ? '✓' : '✕';
+  document.getElementById('scan-title').textContent = ok ? 'Acceso permitido' : 'Acceso denegado';
+  document.getElementById('scan-sub').textContent   = sala + ' · ' + horaStr;
+  document.getElementById('result-card').className  = 'result-card show ' + cl;
+  document.getElementById('rbadge').textContent = ok ? 'ACCESO OK' : 'DENEGADO';
+  document.getElementById('rbadge').className   = 'rbadge ' + cl;
+  document.getElementById('rname').textContent  = a.nombre + ' ' + a.apellidos;
+  document.getElementById('rmeta').textContent  = 'ID ' + a.id + (a.email ? ' · ' + a.email : '');
+  document.getElementById('acceso-single-wrap').innerHTML =
+    '<div class="acceso-single ' + (ok ? 'si' : 'no') + '">' +
+    '<span style="font-size:20px;">' + (ok ? '✓' : '✕') + '</span>' + sala + '</div>';
+  document.getElementById('rdetail').textContent = ok
+    ? 'Entrada registrada a las ' + horaStr + '.'
+    : 'Sin permiso para ' + sala + '.';
+  setTimeout(resetScanner, 5000);
 }
 
-function showUnknown(uid,horaStr,sala){
-  document.getElementById('scan-area').className='scanner-area deny';
-  document.getElementById('scan-ring').className='scan-ring deny';
-  document.getElementById('scan-icon').textContent='⚠';
-  document.getElementById('scan-title').textContent='Tarjeta no registrada';
-  document.getElementById('scan-sub').textContent='UID: '+uid;
-  document.getElementById('result-card').className='result-card show deny';
-  document.getElementById('rbadge').textContent='DESCONOCIDO';
-  document.getElementById('rbadge').className='rbadge deny';
-  document.getElementById('rname').textContent='Tarjeta no encontrada';
-  document.getElementById('rmeta').textContent=uid;
-  document.getElementById('acceso-single-wrap').innerHTML='';
-  document.getElementById('rdetail').textContent='Este UID no está en la lista de asistentes.';
-  setTimeout(resetScanner,5000);
+function showUnknown(uid, horaStr, sala) {
+  document.getElementById('scan-area').className  = 'scanner-area deny';
+  document.getElementById('scan-ring').className  = 'scan-ring deny';
+  document.getElementById('scan-icon').textContent  = '⚠';
+  document.getElementById('scan-title').textContent = 'Tarjeta no registrada';
+  document.getElementById('scan-sub').textContent   = 'UID: ' + uid;
+  document.getElementById('result-card').className  = 'result-card show deny';
+  document.getElementById('rbadge').textContent = 'DESCONOCIDO';
+  document.getElementById('rbadge').className   = 'rbadge deny';
+  document.getElementById('rname').textContent  = 'Tarjeta no encontrada';
+  document.getElementById('rmeta').textContent  = uid;
+  document.getElementById('acceso-single-wrap').innerHTML = '';
+  document.getElementById('rdetail').textContent = 'Este UID no está en la lista de asistentes.';
+  setTimeout(resetScanner, 5000);
 }
 
-function resetScanner(){
-  document.getElementById('scan-area').className='scanner-area';
-  document.getElementById('scan-ring').className='scan-ring';
-  document.getElementById('scan-icon').textContent='📡';
-  document.getElementById('scan-title').textContent='Listo para escanear';
-  document.getElementById('scan-sub').textContent='Acerca la tarjeta NFC al teléfono';
-  document.getElementById('result-card').className='result-card';
-  document.getElementById('btn-scan').className='btn-scan ready';
-  document.getElementById('btn-scan').textContent='Escanear tarjeta NFC';
-  scanning=false;
+function resetScanner() {
+  document.getElementById('scan-area').className  = 'scanner-area';
+  document.getElementById('scan-ring').className  = 'scan-ring';
+  document.getElementById('scan-icon').textContent  = '📡';
+  document.getElementById('scan-title').textContent = 'Listo para escanear';
+  document.getElementById('scan-sub').textContent   = 'Acerca la tarjeta NFC al teléfono';
+  document.getElementById('result-card').className  = 'result-card';
+  document.getElementById('btn-scan').className     = 'btn-scan ready';
+  document.getElementById('btn-scan').textContent   = 'Escanear tarjeta NFC';
+  scanning = false;
 }
 
-window.startScan=async function(){
-  if(scanning) return;
-  scanning=true;
-  document.getElementById('btn-scan').className='btn-scan scanning';
-  document.getElementById('btn-scan').textContent='Esperando tarjeta…';
+window.startScan = async function() {
+  if (scanning) return;
+  scanning = true;
+  document.getElementById('btn-scan').className   = 'btn-scan scanning';
+  document.getElementById('btn-scan').textContent = 'Esperando tarjeta…';
   document.getElementById('scan-ring').classList.add('pulse');
-  document.getElementById('scan-title').textContent='Acerca la tarjeta';
-  document.getElementById('scan-sub').textContent='Mantén la tarjeta cerca del teléfono';
-  if('NDEFReader' in window){
-    try{
-      const reader=new NDEFReader();
-      await reader.scan();
-      reader.addEventListener('reading',({serialNumber})=>{ document.getElementById('scan-ring').classList.remove('pulse'); scanning=false; procesarLectura(serialNumber); },{once:true});
-      return;
-    }catch(err){ warn('Error NFC: '+err.message+'. Usando simulación.'); }
-  } else { warn('Web NFC no disponible. Usa Chrome en Android.'); }
-  document.getElementById('scan-ring').classList.remove('pulse');
-  scanning=false; resetScanner();
-  const lista=asistentes.length?asistentes.slice(0,6).map(a=>a.uid+'  →  '+a.nombre+' '+a.apellidos).join('\n'):'(sin asistentes)';
-  const uid=prompt('MODO SIMULACIÓN\nIntroduce el UID:\n\n'+lista);
-  if(uid&&uid.trim()) procesarLectura(uid.trim());
-};
-
-function warn(msg){ const el=document.getElementById('nfc-warn'); el.textContent=msg; el.classList.add('show'); }
-
-window.selectSala=function(s){
-  salaActiva=s;
-  document.getElementById('btn-servei').className='sala-btn'+(s==='servei'?' sel':'');
-  document.getElementById('btn-sidi').className='sala-btn'+(s==='sidi'?' sel':'');
-  document.getElementById('btn-talleres').className='sala-btn'+(s==='talleres'?' sel':'');
-  resetScanner();
-};
-
-// ── Renders ───────────────────────────────────────────────────────────────────
-function renderRecent(){
-  document.getElementById('recent-list').innerHTML=registros.slice(0,6).map(r=>
-    '<div class="ri"><div class="dot '+(r.ok?'ok':'deny')+'"></div><div style="flex:1;min-width:0;"><div class="ri-name">'+(r.nombre?r.nombre+' '+r.apellidos:'Desconocido')+'</div><div class="ri-info">'+r.sala+' · '+r.horaStr+'</div></div><div style="font-size:11px;color:'+(r.ok?'var(--green)':'var(--red)')+';">'+(r.ok?'✓':'✕')+'</div></div>'
-  ).join('');
-}
-
-function renderLog(){
-  const list=document.getElementById('log-list');
-  list.innerHTML=registros.length
-    ?registros.map(r=>'<div class="log-item"><div class="dot '+(r.ok?'ok':'deny')+'" style="margin-top:3px;"></div><div><div class="log-name">'+(r.nombre?r.nombre+' '+r.apellidos:'Desconocido · '+r.uid)+'</div><div class="log-meta">'+r.sala+(r.aId?' · '+r.uid:'')+'</div></div><div class="log-time">'+r.horaStr+'<br><span style="color:var(--text3)">'+r.fechaStr+'</span></div></div>').join('')
-    :'<div class="empty-st">Sin registros todavía.</div>';
-  const total=registros.length,ok=registros.filter(r=>r.ok).length;
-  document.getElementById('s-total').textContent=total;
-  document.getElementById('s-ok').textContent=ok;
-  document.getElementById('s-deny').textContent=total-ok;
-}
-
-function renderAstTable(){
-  document.getElementById('ast-count').textContent=asistentes.length?'('+asistentes.length+')':'';
-  document.getElementById('ast-tbody').innerHTML=asistentes.length
-    ?asistentes.map(a=>'<tr><td class="mono">'+(a.id||'')+'</td><td>'+(a.nombre||'')+' '+(a.apellidos||'')+'</td><td class="mono">'+a.uid+'</td><td><span class="'+(a.salaServei?'si-b':'no-b')+'">'+(a.salaServei?'SI':'NO')+'</span></td><td><span class="'+(a.salaSidi?'si-b':'no-b')+'">'+(a.salaSidi?'SI':'NO')+'</span></td><td><span class="'+(a.salaTalleres?'si-b':'no-b')+'">'+(a.salaTalleres?'SI':'NO')+'</span></td><td><button class="btn-del-row" onclick="deleteAst(\''+a._docId+'\')">×</button></td></tr>').join('')
-    :'<tr><td colspan="7" style="color:var(--text3);text-align:center;padding:24px;font-size:12px;">Sin asistentes.</td></tr>';
-}
-
-// ── CRUD ──────────────────────────────────────────────────────────────────────
-
-window.readNfcForForm = async function(){
-  const btn = document.getElementById('btn-read-nfc');
-  const status = document.getElementById('nfc-read-status');
-
-  function setStatus(type, msg){
-    status.style.display = 'block';
-    status.style.background = type==='ok' ? 'var(--green-bg)' : type==='waiting' ? 'var(--blue-bg)' : 'var(--red-bg)';
-    status.style.border = '1px solid ' + (type==='ok' ? 'var(--green-border)' : type==='waiting' ? 'rgba(77,159,255,.3)' : 'var(--red-border)');
-    status.style.color = type==='ok' ? 'var(--green)' : type==='waiting' ? 'var(--blue)' : 'var(--red)';
-    status.textContent = msg;
-  }
-
-  if('NDEFReader' in window){
-    btn.textContent = 'Acerca la tarjeta…';
-    btn.disabled = true;
-    setStatus('waiting', 'Esperando tarjeta NFC… acércala al teléfono');
-    try{
+  document.getElementById('scan-title').textContent = 'Acerca la tarjeta';
+  document.getElementById('scan-sub').textContent   = 'Mantén la tarjeta cerca del teléfono';
+  if ('NDEFReader' in window) {
+    try {
       const reader = new NDEFReader();
       await reader.scan();
       reader.addEventListener('reading', ({serialNumber}) => {
-        const uid = serialNumber.toUpperCase().replace(/[:\s\-]/g,'');
-        // Check if already assigned
-        const existe = asistentes.find(a=>a.uid===uid);
-        if(existe){
-          setStatus('error', 'Esta tarjeta ya está asignada a: ' + existe.nombre + ' ' + existe.apellidos);
+        document.getElementById('scan-ring').classList.remove('pulse');
+        scanning = false;
+        procesarLectura(serialNumber);
+      }, {once: true});
+      return;
+    } catch(err) {
+      document.getElementById('nfc-warn').textContent = 'Error NFC: ' + err.message;
+      document.getElementById('nfc-warn').classList.add('show');
+    }
+  } else {
+    document.getElementById('nfc-warn').textContent = 'Web NFC no disponible. Usa Chrome en Android con NFC activo.';
+    document.getElementById('nfc-warn').classList.add('show');
+  }
+  document.getElementById('scan-ring').classList.remove('pulse');
+  scanning = false;
+  resetScanner();
+  const lista = asistentes.length
+    ? asistentes.slice(0,6).map(a => a.uid + '  →  ' + a.nombre + ' ' + a.apellidos).join('\n')
+    : '(sin asistentes)';
+  const uid = prompt('MODO SIMULACIÓN\nIntroduce el UID:\n\n' + lista);
+  if (uid && uid.trim()) procesarLectura(uid.trim());
+};
+
+window.selectSala = function(s) {
+  salaActiva = s;
+  document.getElementById('btn-servei').className  = 'sala-btn' + (s === 'servei'   ? ' sel' : '');
+  document.getElementById('btn-sidi').className    = 'sala-btn' + (s === 'sidi'     ? ' sel' : '');
+  document.getElementById('btn-talleres').className = 'sala-btn' + (s === 'talleres' ? ' sel' : '');
+  resetScanner();
+};
+
+// ── NFC para formulario ───────────────────────────────────────────────────────
+window.readNfcForForm = async function() {
+  const btn    = document.getElementById('btn-read-nfc');
+  const status = document.getElementById('nfc-read-status');
+  function setStatus(type, msg) {
+    status.style.display = 'block';
+    status.style.background = type==='ok' ? 'var(--green-bg)' : type==='waiting' ? 'var(--blue-bg)' : 'var(--red-bg)';
+    status.style.border = '1px solid ' + (type==='ok' ? 'var(--green-border)' : type==='waiting' ? 'rgba(77,159,255,.3)' : 'var(--red-border)');
+    status.style.color  = type==='ok' ? 'var(--green)' : type==='waiting' ? 'var(--blue)' : 'var(--red)';
+    status.textContent  = msg;
+  }
+  if ('NDEFReader' in window) {
+    btn.textContent = 'Acerca la tarjeta…';
+    btn.disabled = true;
+    setStatus('waiting', 'Esperando tarjeta NFC…');
+    try {
+      const reader = new NDEFReader();
+      await reader.scan();
+      reader.addEventListener('reading', ({serialNumber}) => {
+        const uid = serialNumber.toUpperCase().replace(/[:\s\-]/g, '');
+        const existe = asistentes.find(a => a.uid === uid);
+        if (existe) {
+          setStatus('error', 'Tarjeta ya asignada a: ' + existe.nombre + ' ' + existe.apellidos);
         } else {
           document.getElementById('m-uid').value = uid;
-          setStatus('ok', 'UID leído correctamente: ' + uid);
+          setStatus('ok', 'UID leído: ' + uid);
         }
         btn.textContent = '📡 Leer tarjeta';
         btn.disabled = false;
-      }, {once:true});
-    }catch(err){
+      }, {once: true});
+    } catch(err) {
       setStatus('error', 'Error NFC: ' + err.message);
       btn.textContent = '📡 Leer tarjeta';
       btn.disabled = false;
     }
   } else {
-    // Simulation fallback
     const uid = prompt('MODO SIMULACIÓN\nIntroduce el UID de la nueva tarjeta:');
-    if(uid && uid.trim()){
-      const clean = uid.trim().toUpperCase().replace(/[:\s\-]/g,'');
-      const existe = asistentes.find(a=>a.uid===clean);
-      if(existe){
-        setStatus('error', 'Esta tarjeta ya está asignada a: ' + existe.nombre + ' ' + existe.apellidos);
+    if (uid && uid.trim()) {
+      const clean = uid.trim().toUpperCase().replace(/[:\s\-]/g, '');
+      const existe = asistentes.find(a => a.uid === clean);
+      if (existe) {
+        setStatus('error', 'Tarjeta ya asignada a: ' + existe.nombre + ' ' + existe.apellidos);
       } else {
         document.getElementById('m-uid').value = clean;
         setStatus('ok', 'UID introducido: ' + clean);
@@ -629,143 +455,209 @@ window.readNfcForForm = async function(){
   }
 };
 
-window.addManual=async function(){
-  const uid=document.getElementById('m-uid').value.trim().toUpperCase().replace(/[:\s\-]/g,'');
-  const nombre=document.getElementById('m-nombre').value.trim();
-  if(!uid){ showFb('error','El UID NFC es obligatorio.'); return; }
-  if(!nombre){ showFb('error','El nombre es obligatorio.'); return; }
-  if(asistentes.find(a=>a.uid===uid)){ showFb('error','Ya existe un asistente con ese UID.'); return; }
-  try{
-    await setDoc(doc(colAst,uid),{uid,id:document.getElementById('m-id').value.trim()||String(Date.now()),nombre,apellidos:document.getElementById('m-apellidos').value.trim(),email:document.getElementById('m-email').value.trim(),telefono:document.getElementById('m-telefono').value.trim(),salaServei:document.getElementById('m-servei').checked,salaSidi:document.getElementById('m-sidi').checked,salaTalleres:document.getElementById('m-talleres').checked});
-    ['m-uid','m-id','m-nombre','m-apellidos','m-email','m-telefono'].forEach(id=>document.getElementById(id).value='');
-    document.getElementById('m-servei').checked=true;
-    document.getElementById('m-sidi').checked=true;
-    document.getElementById('m-talleres').checked=true;
-    showFb('ok','Asistente añadido y sincronizado.');
-  }catch(e){ showFb('error','Error: '+e.message); }
+// ── Renders ───────────────────────────────────────────────────────────────────
+function renderRecent() {
+  document.getElementById('recent-list').innerHTML = registros.slice(0, 6).map(r =>
+    '<div class="ri"><div class="dot ' + (r.ok?'ok':'deny') + '"></div>' +
+    '<div style="flex:1;min-width:0;"><div class="ri-name">' + (r.nombre ? r.nombre+' '+r.apellidos : 'Desconocido') + '</div>' +
+    '<div class="ri-info">' + r.sala + ' · ' + r.horaStr + '</div></div>' +
+    '<div style="font-size:11px;color:' + (r.ok?'var(--green)':'var(--red)') + ';">' + (r.ok?'✓':'✕') + '</div></div>'
+  ).join('');
+}
+
+function renderLog() {
+  const list = document.getElementById('log-list');
+  list.innerHTML = registros.length
+    ? registros.map(r =>
+        '<div class="log-item"><div class="dot ' + (r.ok?'ok':'deny') + '" style="margin-top:3px;"></div>' +
+        '<div><div class="log-name">' + (r.nombre ? r.nombre+' '+r.apellidos : 'Desconocido · '+r.uid) + '</div>' +
+        '<div class="log-meta">' + r.sala + (r.aId ? ' · '+r.uid : '') + '</div></div>' +
+        '<div class="log-time">' + r.horaStr + '<br><span style="color:var(--text3)">' + r.fechaStr + '</span></div></div>'
+      ).join('')
+    : '<div class="empty-st">Sin registros todavía.</div>';
+  const total = registros.length, ok = registros.filter(r=>r.ok).length;
+  document.getElementById('s-total').textContent = total;
+  document.getElementById('s-ok').textContent    = ok;
+  document.getElementById('s-deny').textContent  = total - ok;
+}
+
+function renderAstTable() {
+  document.getElementById('ast-count').textContent = asistentes.length ? '(' + asistentes.length + ')' : '';
+  document.getElementById('ast-tbody').innerHTML = asistentes.length
+    ? asistentes.map(a =>
+        '<tr><td class="mono">' + (a.id||'') + '</td>' +
+        '<td>' + (a.nombre||'') + ' ' + (a.apellidos||'') + '</td>' +
+        '<td class="mono">' + a.uid + '</td>' +
+        '<td><span class="' + (a.salaServei  ?'si-b':'no-b') + '">' + (a.salaServei  ?'SI':'NO') + '</span></td>' +
+        '<td><span class="' + (a.salaSidi    ?'si-b':'no-b') + '">' + (a.salaSidi    ?'SI':'NO') + '</span></td>' +
+        '<td><span class="' + (a.salaTalleres?'si-b':'no-b') + '">' + (a.salaTalleres?'SI':'NO') + '</span></td>' +
+        '<td><button class="btn-del-row" onclick="deleteAst(\'' + a._docId + '\')">×</button></td></tr>'
+      ).join('')
+    : '<tr><td colspan="7" style="color:var(--text3);text-align:center;padding:24px;font-size:12px;">Sin asistentes.</td></tr>';
+}
+
+// ── CRUD ──────────────────────────────────────────────────────────────────────
+window.addManual = async function() {
+  const uid    = document.getElementById('m-uid').value.trim().toUpperCase().replace(/[:\s\-]/g, '');
+  const nombre = document.getElementById('m-nombre').value.trim();
+  if (!uid)    { showFb('error', 'El UID NFC es obligatorio.'); return; }
+  if (!nombre) { showFb('error', 'El nombre es obligatorio.'); return; }
+  if (asistentes.find(a => a.uid === uid)) { showFb('error', 'Ya existe un asistente con ese UID.'); return; }
+  try {
+    await setDoc(doc(colAst, uid), {
+      uid,
+      id:           document.getElementById('m-id').value.trim() || String(Date.now()),
+      nombre,
+      apellidos:    document.getElementById('m-apellidos').value.trim(),
+      email:        document.getElementById('m-email').value.trim(),
+      telefono:     document.getElementById('m-telefono').value.trim(),
+      salaServei:   document.getElementById('m-servei').checked,
+      salaSidi:     document.getElementById('m-sidi').checked,
+      salaTalleres: document.getElementById('m-talleres').checked,
+    });
+    ['m-uid','m-id','m-nombre','m-apellidos','m-email','m-telefono'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('m-servei').checked   = true;
+    document.getElementById('m-sidi').checked     = true;
+    document.getElementById('m-talleres').checked = true;
+    document.getElementById('nfc-read-status').style.display = 'none';
+    showFb('ok', '✓ Asistente añadido y sincronizado.');
+  } catch(e) { showFb('error', 'Error: ' + e.message); }
 };
 
-window.deleteAst=async function(docId){
-  if(!confirm('¿Eliminar este asistente?')) return;
-  try{ await deleteDoc(doc(db,'asistentes',docId)); }catch(e){ alert('Error: '+e.message); }
+window.deleteAst = async function(docId) {
+  if (!confirm('¿Eliminar este asistente?')) return;
+  try { await deleteDoc(doc(db, 'asistentes', docId)); } catch(e) { alert('Error: ' + e.message); }
 };
 
-window.clearAst=async function(){
-  if(!confirm('¿Borrar TODOS los asistentes de todos los dispositivos?')) return;
-  const snap=await getDocs(colAst); const b=writeBatch(db); snap.docs.forEach(d=>b.delete(d.ref)); await b.commit();
+window.clearAst = async function() {
+  if (!confirm('¿Borrar TODOS los asistentes?')) return;
+  const snap = await getDocs(colAst);
+  const b = writeBatch(db);
+  snap.docs.forEach(d => b.delete(d.ref));
+  await b.commit();
 };
 
-window.clearRegistros=async function(){
-  if(!confirm('¿Borrar todo el historial?')) return;
-  const snap=await getDocs(colReg); const b=writeBatch(db); snap.docs.forEach(d=>b.delete(d.ref)); await b.commit();
+window.clearRegistros = async function() {
+  if (!confirm('¿Borrar todo el historial?')) return;
+  const snap = await getDocs(colReg);
+  const b = writeBatch(db);
+  snap.docs.forEach(d => b.delete(d.ref));
+  await b.commit();
 };
 
-function detectSep(lines){const sample=lines.slice(0,3).join('\n');const commas=(sample.match(/,/g)||[]).length;const semis=(sample.match(/;/g)||[]).length;return semis>commas?';':',';}
-function parseLine(l,sep){sep=sep||',';const r=[];let c='',q=false;for(let i=0;i<l.length;i++){const ch=l[i];if(ch==='"'){q=!q;continue;}if(ch===sep&&!q){r.push(c.trim());c='';continue;}c+=ch;}r.push(c.trim());return r;}
-function norm(s){return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');}
+// ── CSV Import ────────────────────────────────────────────────────────────────
+function detectSep(lines) {
+  const sample = lines.slice(0, 3).join('\n');
+  return (sample.match(/;/g)||[]).length > (sample.match(/,/g)||[]).length ? ';' : ',';
+}
 
-window.importCSV=async function(input){
-  const file=input.files[0]; if(!file) return;
-  const fr=new FileReader();
-  fr.onload=async function(e){
-    // Try UTF-8 first, then latin1 fallback handled by readAsText
-    const raw=e.target.result;
-    const lines=raw.trim().split(/
-?
-/).filter(l=>l.trim());
-    if(lines.length<2){ showFb('error','Archivo vacío.'); return; }
+function parseLine(l, sep) {
+  sep = sep || ',';
+  const r = []; let c = '', q = false;
+  for (let i = 0; i < l.length; i++) {
+    const ch = l[i];
+    if (ch === '"') { q = !q; continue; }
+    if (ch === sep && !q) { r.push(c.trim()); c = ''; continue; }
+    c += ch;
+  }
+  r.push(c.trim()); return r;
+}
 
-    // Auto-detect separator
-    const sep=detectSep(lines);
+function norm(s) {
+  return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+}
 
-    // Parse header
-    const header=parseLine(lines[0],sep).map(norm);
-
-    const fi={
-      uid:      header.findIndex(h=>h==='uid'),
-      id:       header.findIndex(h=>h==='id'),
-      nombre:   header.findIndex(h=>h==='nombre'),
-      apellidos:header.findIndex(h=>h==='apellidos'||h==='apellido'),
-      email:    header.findIndex(h=>h==='email'),
-      telefono: header.findIndex(h=>h==='telefono'||h==='tlf'||h==='phone'),
-      servei:   header.findIndex(h=>h.includes('servei')),
-      sidi:     header.findIndex(h=>h.includes('sidi')),
-      plenaria: header.findIndex(h=>h.includes('plenaria')&&!h.includes('servei')&&!h.includes('sidi')),
-      talleres: header.findIndex(h=>h.includes('taller')),
+window.importCSV = async function(input) {
+  const file = input.files[0]; if (!file) return;
+  const fr = new FileReader();
+  fr.onload = async function(e) {
+    const lines = e.target.result.trim().split(/\r?\n/).filter(l => l.trim());
+    if (lines.length < 2) { showFb('error', 'Archivo vacío.'); return; }
+    const sep    = detectSep(lines);
+    const header = parseLine(lines[0], sep).map(norm);
+    const fi = {
+      uid:      header.findIndex(h => h === 'uid'),
+      id:       header.findIndex(h => h === 'id'),
+      nombre:   header.findIndex(h => h === 'nombre'),
+      apellidos:header.findIndex(h => h === 'apellidos' || h === 'apellido'),
+      email:    header.findIndex(h => h === 'email'),
+      telefono: header.findIndex(h => h === 'telefono' || h === 'tlf' || h === 'phone'),
+      servei:   header.findIndex(h => h.includes('servei')),
+      sidi:     header.findIndex(h => h.includes('sidi')),
+      talleres: header.findIndex(h => h.includes('taller')),
     };
+    if (fi.uid < 0)     { showFb('error', 'Columna UID no encontrada. Cabeceras: ' + header.join(', ')); return; }
+    if (fi.nombre < 0)  { showFb('error', 'Columna Nombre no encontrada.'); return; }
+    if (fi.servei < 0)  { showFb('error', 'Columna "Sala Plenaria SERVEI" no encontrada. Cabeceras: ' + header.join(', ')); return; }
+    if (fi.sidi < 0)    { showFb('error', 'Columna "Sala Plenaria SIDI" no encontrada. Cabeceras: ' + header.join(', ')); return; }
+    if (fi.talleres < 0){ showFb('error', 'Columna "Talleres" no encontrada. Cabeceras: ' + header.join(', ')); return; }
 
-    // Validations
-    if(fi.uid<0){showFb('error','Columna UID no encontrada. Cabeceras detectadas: '+header.join(', '));return;}
-    if(fi.nombre<0){showFb('error','Columna Nombre no encontrada.');return;}
-    if(fi.servei<0){showFb('error','Columna "Sala Plenaria SERVEI" no encontrada. Cabeceras: '+header.join(', '));return;}
-    if(fi.sidi<0){showFb('error','Columna "Sala Plenaria SIDI" no encontrada. Cabeceras: '+header.join(', '));return;}
-    if(fi.talleres<0){showFb('error','Columna "Talleres" no encontrada. Cabeceras: '+header.join(', '));return;}
-
-    const existing=new Set(asistentes.map(a=>a.uid));
-    const siNo=v=>{
-      const s=(v||'').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-      return s==='SI'||s==='S'||s==='1'||s==='TRUE'||s==='VERDADERO'||s==='YES';
+    const existing = new Set(asistentes.map(a => a.uid));
+    const siNo = v => {
+      const s = (v||'').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      return ['SI','S','1','TRUE','VERDADERO','YES'].includes(s);
     };
-
-    let imp=0,omit=0;
-    const nuevos=[];
-    lines.slice(1).forEach((line,i)=>{
-      const c=parseLine(line,sep);
-      const uid=(c[fi.uid]||'').toUpperCase().replace(/[:\s\-]/g,'');
-      if(!uid||existing.has(uid)){omit++;return;}
+    let imp = 0, omit = 0;
+    const nuevos = [];
+    lines.slice(1).forEach((line, i) => {
+      const c   = parseLine(line, sep);
+      const uid = (c[fi.uid]||'').toUpperCase().replace(/[:\s\-]/g, '');
+      if (!uid || existing.has(uid)) { omit++; return; }
       nuevos.push({
         uid,
-        id:          fi.id>=0       ?c[fi.id].trim()        :String(i+1),
-        nombre:      fi.nombre>=0   ?c[fi.nombre].trim()    :'',
-        apellidos:   fi.apellidos>=0?c[fi.apellidos].trim() :'',
-        email:       fi.email>=0    ?c[fi.email].trim()     :'',
-        telefono:    fi.telefono>=0 ?c[fi.telefono].trim()  :'',
-        salaServei:  siNo(c[fi.servei]),
-        salaSidi:    siNo(c[fi.sidi]),
-        salaTalleres:siNo(c[fi.talleres]),
+        id:           fi.id >= 0       ? c[fi.id].trim()        : String(i+1),
+        nombre:       fi.nombre >= 0   ? c[fi.nombre].trim()    : '',
+        apellidos:    fi.apellidos >= 0 ? c[fi.apellidos].trim() : '',
+        email:        fi.email >= 0    ? c[fi.email].trim()     : '',
+        telefono:     fi.telefono >= 0  ? c[fi.telefono].trim()  : '',
+        salaServei:   siNo(c[fi.servei]),
+        salaSidi:     siNo(c[fi.sidi]),
+        salaTalleres: siNo(c[fi.talleres]),
       });
-      existing.add(uid);imp++;
+      existing.add(uid); imp++;
     });
-
-    for(let i=0;i<nuevos.length;i+=500){
-      const b=writeBatch(db);
-      nuevos.slice(i,i+500).forEach(a=>b.set(doc(colAst,a.uid),a));
+    for (let i = 0; i < nuevos.length; i += 500) {
+      const b = writeBatch(db);
+      nuevos.slice(i, i+500).forEach(a => b.set(doc(colAst, a.uid), a));
       await b.commit();
     }
-    input.value='';
-    if(imp>0&&omit===0) showFb('ok','✓ '+imp+' asistentes importados y sincronizados. Separador detectado: "'+sep+'"');
-    else if(imp>0)       showFb('ok','✓ '+imp+' importados. '+omit+' omitidos (duplicados o sin UID).');
-    else                 showFb('error','No se importó ningún asistente. Separador detectado: "'+sep+'". Cabeceras: '+header.join(', '));
+    input.value = '';
+    if (imp > 0 && omit === 0) showFb('ok', '✓ ' + imp + ' asistentes importados. Separador: "' + sep + '"');
+    else if (imp > 0)           showFb('ok', '✓ ' + imp + ' importados. ' + omit + ' omitidos (duplicados o sin UID).');
+    else                        showFb('error', 'No se importó ningún asistente. Separador: "' + sep + '". Cabeceras: ' + header.join(', '));
   };
-  fr.readAsText(file,'UTF-8');
+  fr.readAsText(file, 'UTF-8');
 };
 
-window.exportCSV=function(){
-  if(!registros.length){alert('No hay registros todavía.');return;}
-  const rows=[['Nombre','Apellidos','UID','Sala','Acceso','Hora','Fecha']];
-  registros.forEach(r=>rows.push([r.nombre||'Desconocido',r.apellidos||'',r.uid,r.sala,r.ok?'OK':'DENEGADO',r.horaStr,r.fechaStr]));
-  const csv=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
-  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='registro-asistencia.csv';a.click();
+// ── Export ────────────────────────────────────────────────────────────────────
+window.exportCSV = function() {
+  if (!registros.length) { alert('No hay registros todavía.'); return; }
+  const rows = [['Nombre','Apellidos','UID','Sala','Acceso','Hora','Fecha']];
+  registros.forEach(r => rows.push([r.nombre||'Desconocido', r.apellidos||'', r.uid, r.sala, r.ok?'OK':'DENEGADO', r.horaStr, r.fechaStr]));
+  const csv  = rows.map(r => r.map(v => '"' + String(v).replace(/"/g,'""') + '"').join(',')).join('\n');
+  const blob = new Blob(['\uFEFF' + csv], {type:'text/csv;charset=utf-8'});
+  const a    = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'registro-asistencia.csv'; a.click();
 };
 
-window.showView=function(v,btn){
-  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
-  document.querySelectorAll('.nav-tab').forEach(el=>el.classList.remove('active'));
-  document.getElementById('view-'+v).classList.add('active');
+// ── Vistas ────────────────────────────────────────────────────────────────────
+window.showView = function(v, btn) {
+  document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('view-' + v).classList.add('active');
   btn.classList.add('active');
-  if(v==='registro') renderLog();
-  if(v==='admin')    renderAstTable();
+  if (v === 'registro') renderLog();
+  if (v === 'admin')    renderAstTable();
 };
 
-function showFb(type,msg){
-  const el=document.getElementById('imp-fb');
-  el.style.display='block';
-  el.style.background=type==='ok'?'var(--green-bg)':'var(--red-bg)';
-  el.style.border='1px solid '+(type==='ok'?'var(--green-border)':'var(--red-border)');
-  el.style.color=type==='ok'?'var(--green)':'var(--red)';
-  el.textContent=msg;
-  setTimeout(()=>el.style.display='none',6000);
+function showFb(type, msg) {
+  const el = document.getElementById('imp-fb');
+  el.style.display    = 'block';
+  el.style.background = type === 'ok' ? 'var(--green-bg)' : 'var(--red-bg)';
+  el.style.border     = '1px solid ' + (type === 'ok' ? 'var(--green-border)' : 'var(--red-border)');
+  el.style.color      = type === 'ok' ? 'var(--green)' : 'var(--red)';
+  el.textContent      = msg;
+  setTimeout(() => el.style.display = 'none', 7000);
 }
 </script>
 </body>
