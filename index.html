@@ -627,31 +627,73 @@ window.importCSV=async function(input){
   const file=input.files[0]; if(!file) return;
   const fr=new FileReader();
   fr.onload=async function(e){
-    const lines=e.target.result.trim().split(/\r?\n/).filter(l=>l.trim());
+    // Try UTF-8 first, then latin1 fallback handled by readAsText
+    const raw=e.target.result;
+    const lines=raw.trim().split(/?
+/).filter(l=>l.trim());
     if(lines.length<2){ showFb('error','Archivo vacío.'); return; }
+
+    // Auto-detect separator
     const sep=detectSep(lines);
+
+    // Parse header
     const header=parseLine(lines[0],sep).map(norm);
-    const fi={uid:header.findIndex(h=>h==='uid'),id:header.findIndex(h=>h==='id'),nombre:header.findIndex(h=>h==='nombre'),apellidos:header.findIndex(h=>h==='apellidos'||h==='apellido'),email:header.findIndex(h=>h==='email'),telefono:header.findIndex(h=>h==='telefono'||h==='tlf'||h==='phone'),servei:header.findIndex(h=>h.includes('servei')),sidi:header.findIndex(h=>h.includes('sidi')),plenaria:header.findIndex(h=>h.includes('plenaria')&&!h.includes('servei')&&!h.includes('sidi')),talleres:header.findIndex(h=>h.includes('taller'))};
-    if(fi.uid<0){showFb('error','Columna UID no encontrada.');return;}
+
+    const fi={
+      uid:      header.findIndex(h=>h==='uid'),
+      id:       header.findIndex(h=>h==='id'),
+      nombre:   header.findIndex(h=>h==='nombre'),
+      apellidos:header.findIndex(h=>h==='apellidos'||h==='apellido'),
+      email:    header.findIndex(h=>h==='email'),
+      telefono: header.findIndex(h=>h==='telefono'||h==='tlf'||h==='phone'),
+      servei:   header.findIndex(h=>h.includes('servei')),
+      sidi:     header.findIndex(h=>h.includes('sidi')),
+      plenaria: header.findIndex(h=>h.includes('plenaria')&&!h.includes('servei')&&!h.includes('sidi')),
+      talleres: header.findIndex(h=>h.includes('taller')),
+    };
+
+    // Validations
+    if(fi.uid<0){showFb('error','Columna UID no encontrada. Cabeceras detectadas: '+header.join(', '));return;}
     if(fi.nombre<0){showFb('error','Columna Nombre no encontrada.');return;}
-    if(fi.servei<0&&fi.plenaria<0){showFb('error','Columna "Sala Plenaria SERVEI" no encontrada.');return;}
-    if(fi.sidi<0){showFb('error','Columna "Sala Plenaria SIDI" no encontrada.');return;}
-    if(fi.talleres<0){showFb('error','Columna "Talleres" no encontrada.');return;}
+    if(fi.servei<0){showFb('error','Columna "Sala Plenaria SERVEI" no encontrada. Cabeceras: '+header.join(', '));return;}
+    if(fi.sidi<0){showFb('error','Columna "Sala Plenaria SIDI" no encontrada. Cabeceras: '+header.join(', '));return;}
+    if(fi.talleres<0){showFb('error','Columna "Talleres" no encontrada. Cabeceras: '+header.join(', '));return;}
+
     const existing=new Set(asistentes.map(a=>a.uid));
-    const siNo=v=>{ const s=(v||'').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); return s==='SI'||s==='S'||s==='1'||s==='TRUE'||s==='VERDADERO'||s==='YES'; };
-    let imp=0,omit=0;const nuevos=[];
+    const siNo=v=>{
+      const s=(v||'').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      return s==='SI'||s==='S'||s==='1'||s==='TRUE'||s==='VERDADERO'||s==='YES';
+    };
+
+    let imp=0,omit=0;
+    const nuevos=[];
     lines.slice(1).forEach((line,i)=>{
       const c=parseLine(line,sep);
       const uid=(c[fi.uid]||'').toUpperCase().replace(/[:\s\-]/g,'');
       if(!uid||existing.has(uid)){omit++;return;}
-      nuevos.push({uid,id:fi.id>=0?c[fi.id]:String(i+1),nombre:fi.nombre>=0?c[fi.nombre]:'',apellidos:fi.apellidos>=0?c[fi.apellidos]:'',email:fi.email>=0?c[fi.email]:'',telefono:fi.telefono>=0?c[fi.telefono]:'',salaServei:fi.servei>=0?siNo(c[fi.servei]):(fi.plenaria>=0?siNo(c[fi.plenaria]):false),salaSidi:fi.sidi>=0?siNo(c[fi.sidi]):false,salaTalleres:fi.talleres>=0?siNo(c[fi.talleres]):false});
+      nuevos.push({
+        uid,
+        id:          fi.id>=0       ?c[fi.id].trim()        :String(i+1),
+        nombre:      fi.nombre>=0   ?c[fi.nombre].trim()    :'',
+        apellidos:   fi.apellidos>=0?c[fi.apellidos].trim() :'',
+        email:       fi.email>=0    ?c[fi.email].trim()     :'',
+        telefono:    fi.telefono>=0 ?c[fi.telefono].trim()  :'',
+        salaServei:  siNo(c[fi.servei]),
+        salaSidi:    siNo(c[fi.sidi]),
+        salaTalleres:siNo(c[fi.talleres]),
+      });
       existing.add(uid);imp++;
     });
-    for(let i=0;i<nuevos.length;i+=500){const b=writeBatch(db);nuevos.slice(i,i+500).forEach(a=>b.set(doc(colAst,a.uid),a));await b.commit();}
+
+    for(let i=0;i<nuevos.length;i+=500){
+      const b=writeBatch(db);
+      nuevos.slice(i,i+500).forEach(a=>b.set(doc(colAst,a.uid),a));
+      await b.commit();
+    }
     input.value='';
-    if(imp>0&&omit===0) showFb('ok','✓ '+imp+' asistentes importados y sincronizados.');
-    else if(imp>0)       showFb('ok','✓ '+imp+' importados. '+omit+' omitidos.');
-    else                 showFb('error','No se importó ningún asistente. Revisa las columnas.');
+    if(imp>0&&omit===0) showFb('ok','✓ '+imp+' asistentes importados y sincronizados. Separador detectado: "'+sep+'"');
+    else if(imp>0)       showFb('ok','✓ '+imp+' importados. '+omit+' omitidos (duplicados o sin UID).');
+    else                 showFb('error','No se importó ningún asistente. Separador detectado: "'+sep+'". Cabeceras: '+header.join(', '));
   };
   fr.readAsText(file,'UTF-8');
 };
