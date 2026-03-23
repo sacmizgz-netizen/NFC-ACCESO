@@ -6,7 +6,7 @@
 <title>Control de Acceso NFC</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root {
+  :root{
     --bg:#0a0a0f;--surface:#13131a;--surface2:#1c1c27;
     --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);
     --text:#f0f0f5;--text2:#8888a0;--text3:#55556a;
@@ -18,7 +18,17 @@
   }
   *{box-sizing:border-box;margin:0;padding:0;}
   body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
-  nav{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:50;}
+
+  /* SYNC BANNER */
+  .sync-bar{display:flex;align-items:center;justify-content:center;gap:8px;padding:8px 16px;font-size:11px;font-family:'DM Mono',monospace;transition:all .3s;}
+  .sync-bar.connecting{background:var(--amber-bg);color:var(--amber);}
+  .sync-bar.live{background:var(--green-bg);color:var(--green);}
+  .sync-bar.error{background:var(--red-bg);color:var(--red);}
+  .sync-dot{width:6px;height:6px;border-radius:50%;background:currentColor;}
+  .sync-dot.pulse{animation:sdot 1.2s ease-in-out infinite;}
+  @keyframes sdot{0%,100%{opacity:1}50%{opacity:.3}}
+
+  nav{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:50;}
   .nav-logo{font-family:'DM Mono',monospace;font-size:13px;color:var(--text2);letter-spacing:.08em;}
   .nav-logo span{color:var(--green);}
   .nav-tabs{display:flex;gap:4px;background:var(--surface);border-radius:var(--radius-sm);padding:3px;}
@@ -27,6 +37,7 @@
   .view{display:none;padding:20px;max-width:600px;margin:0 auto;}
   .view.active{display:block;}
 
+  /* LECTOR */
   .sala-lbl{font-size:11px;letter-spacing:.1em;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:8px;font-family:'DM Mono',monospace;}
   .sala-btns{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;}
   .sala-btn{padding:10px 22px;border-radius:var(--radius-sm);border:1px solid var(--border2);background:var(--surface);color:var(--text2);font-size:14px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;}
@@ -54,7 +65,6 @@
   .acceso-single{border-radius:var(--radius-sm);padding:12px 16px;display:flex;align-items:center;gap:10px;font-size:15px;font-weight:500;}
   .acceso-single.si{background:var(--green-bg);border:1px solid var(--green-border);color:var(--green);}
   .acceso-single.no{background:var(--red-bg);border:1px solid var(--red-border);color:var(--red);}
-  .acceso-icon{font-size:20px;}
   .rdetail{font-size:13px;color:var(--text2);margin-top:10px;}
   .btn-scan{width:100%;padding:16px;border-radius:var(--radius);border:none;font-size:16px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
   .btn-scan.ready{background:var(--green);color:#000;}
@@ -70,6 +80,7 @@
   .ri-name{font-size:13px;font-weight:500;}
   .ri-info{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:1px;}
 
+  /* REGISTRO */
   .stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;}
   .stat-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;}
   .stat-num{font-size:26px;font-weight:600;line-height:1;margin-bottom:4px;}
@@ -80,6 +91,7 @@
   .log-time{font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);text-align:right;white-space:nowrap;}
   .empty-st{text-align:center;padding:48px 0;color:var(--text3);font-size:13px;}
 
+  /* ADMIN */
   .adm-sec{margin-bottom:28px;}
   .adm-sec h3{font-size:11px;letter-spacing:.1em;color:var(--text3);text-transform:uppercase;font-family:'DM Mono',monospace;margin-bottom:12px;}
   .tw{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow-x:auto;}
@@ -111,10 +123,25 @@
   .manual-form{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:10px;}
   .manual-form-title{font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:12px;text-transform:uppercase;letter-spacing:.08em;}
   .checks-row{display:flex;gap:16px;margin:8px 0 12px;}
-  .persist-badge{font-size:11px;color:var(--green);font-family:'DM Mono',monospace;padding:4px 10px;border-radius:4px;background:var(--green-bg);border:1px solid var(--green-border);display:inline-block;margin-bottom:12px;}
+  .loading-overlay{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:100;}
+  .loading-overlay.hidden{display:none;}
+  .spinner{width:36px;height:36px;border:2px solid var(--border2);border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
+
+<!-- Loading -->
+<div class="loading-overlay" id="loading">
+  <div class="spinner"></div>
+  <div style="font-size:13px;color:var(--text2);font-family:'DM Mono',monospace;">Conectando con la base de datos…</div>
+</div>
+
+<!-- Sync status bar -->
+<div class="sync-bar connecting" id="sync-bar">
+  <div class="sync-dot pulse" id="sync-dot"></div>
+  <span id="sync-txt">Conectando…</span>
+</div>
 
 <nav>
   <div class="nav-logo">NFC<span>·</span>ACCESS</div>
@@ -155,31 +182,29 @@
 <!-- REGISTRO -->
 <div id="view-registro" class="view">
   <div class="stats-row" id="stats-row">
-    <div class="stat-box"><div class="stat-num">—</div><div class="stat-lbl">LECTURAS</div></div>
-    <div class="stat-box"><div class="stat-num" style="color:var(--green)">—</div><div class="stat-lbl">ACCESOS OK</div></div>
-    <div class="stat-box"><div class="stat-num" style="color:var(--red)">—</div><div class="stat-lbl">DENEGADOS</div></div>
+    <div class="stat-box"><div class="stat-num" id="s-total">—</div><div class="stat-lbl">LECTURAS</div></div>
+    <div class="stat-box"><div class="stat-num" style="color:var(--green)" id="s-ok">—</div><div class="stat-lbl">ACCESOS OK</div></div>
+    <div class="stat-box"><div class="stat-num" style="color:var(--red)" id="s-deny">—</div><div class="stat-lbl">DENEGADOS</div></div>
   </div>
   <div class="sec-title">Historial completo</div>
-  <div id="log-list"><div class="empty-st">Sin registros todavía.<br>Empieza escaneando tarjetas.</div></div>
+  <div id="log-list"><div class="empty-st">Sin registros todavía.</div></div>
   <button class="exp-btn" onclick="exportCSV()">Exportar registro como CSV</button>
-  <button class="exp-btn del-btn" onclick="clearRegistros()" style="margin-top:6px;">Borrar historial</button>
+  <button class="exp-btn del-btn" onclick="clearRegistros()">Borrar historial</button>
 </div>
 
 <!-- ADMIN -->
 <div id="view-admin" class="view">
-
   <div class="adm-sec">
     <h3>Importar asistentes desde CSV</h3>
-    <div id="persist-status"></div>
     <div class="drop-zone" onclick="document.getElementById('csv-input').click()">
       <div style="font-size:28px;margin-bottom:10px;">📄</div>
       <div style="font-size:14px;font-weight:500;color:var(--text);margin-bottom:4px;">Selecciona el CSV exportado de Google Sheets</div>
-      <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">Archivo → Descargar → Valores separados por comas (.csv)</div>
+      <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">Se sincroniza automáticamente en todos los dispositivos</div>
       <input type="file" id="csv-input" accept=".csv,.txt" style="display:none" onchange="importCSV(this)">
     </div>
     <div class="imp-fb" id="imp-fb"></div>
     <div class="fmt-box">
-      <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:8px;">COLUMNAS QUE DETECTA LA APP (en cualquier orden)</div>
+      <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:8px;">COLUMNAS DETECTADAS AUTOMÁTICAMENTE</div>
       <div style="font-size:12px;color:var(--text2);font-family:'DM Mono',monospace;line-height:2;">
         UID · ID · Nombre · Apellidos · Email · Teléfono<br>
         Sala Plenaria <span style="color:var(--green)">SI</span> / <span style="color:var(--red)">NO</span> &nbsp;·&nbsp;
@@ -193,16 +218,16 @@
     <div class="manual-form">
       <div class="manual-form-title">Nuevo asistente</div>
       <div class="form-row">
-        <input class="form-input" id="m-uid"      placeholder="UID NFC (obligatorio)">
-        <input class="form-input" id="m-id"       placeholder="ID interno">
+        <input class="form-input" id="m-uid"       placeholder="UID NFC (obligatorio)">
+        <input class="form-input" id="m-id"        placeholder="ID interno">
       </div>
       <div class="form-row">
-        <input class="form-input" id="m-nombre"   placeholder="Nombre (obligatorio)">
+        <input class="form-input" id="m-nombre"    placeholder="Nombre (obligatorio)">
         <input class="form-input" id="m-apellidos" placeholder="Apellidos">
       </div>
       <div class="form-row">
-        <input class="form-input" id="m-email"    placeholder="Email">
-        <input class="form-input" id="m-telefono" placeholder="Teléfono">
+        <input class="form-input" id="m-email"     placeholder="Email">
+        <input class="form-input" id="m-telefono"  placeholder="Teléfono">
       </div>
       <div class="checks-row">
         <label class="form-check"><input type="checkbox" id="m-plenaria" checked> Sala Plenaria</label>
@@ -218,84 +243,122 @@
       <table>
         <thead><tr><th>ID</th><th>Nombre completo</th><th>UID NFC</th><th>Plenaria</th><th>Talleres</th><th></th></tr></thead>
         <tbody id="ast-tbody">
-          <tr><td colspan="6" style="color:var(--text3);text-align:center;padding:24px;font-size:12px;">Importa un CSV o añade asistentes manualmente.</td></tr>
+          <tr><td colspan="6" style="color:var(--text3);text-align:center;padding:24px;font-size:12px;">Cargando…</td></tr>
         </tbody>
       </table>
     </div>
     <button class="exp-btn del-btn" onclick="clearAst()">Borrar todos los asistentes</button>
   </div>
-
 </div>
 
-<script>
-// ── Estado ───────────────────────────────────────────────────────────────────
-let asistentes = [], registros = [], salaActiva = 'plenaria', scanning = false;
+<!-- Firebase -->
+<script type="module">
+import { initializeApp }                          from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, collection, doc, setDoc,
+         deleteDoc, onSnapshot, addDoc,
+         query, orderBy, writeBatch, getDocs,
+         serverTimestamp }                        from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
-// ── Persistencia (localStorage) ──────────────────────────────────────────────
-function saveData() {
-  try {
-    localStorage.setItem('nfc_asistentes', JSON.stringify(asistentes));
-    // Para registros solo guardamos los campos serializables (sin referencia circular a 'a')
-    const regSerial = registros.map(r => ({
-      uid: r.uid, sala: r.sala, ok: r.ok, horaStr: r.horaStr, fechaStr: r.fechaStr,
-      aId: r.a ? r.a.uid : null
-    }));
-    localStorage.setItem('nfc_registros', JSON.stringify(regSerial));
-  } catch(e) { console.warn('localStorage no disponible:', e); }
+// ── Firebase init ─────────────────────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey:            "AIzaSyDJJxuxk4hLrQ3X2zWfvGi4y5v3KiuIBJY",
+  authDomain:        "nfc-acceso.firebaseapp.com",
+  projectId:         "nfc-acceso",
+  storageBucket:     "nfc-acceso.firebasestorage.app",
+  messagingSenderId: "54196258743",
+  appId:             "1:54196258743:web:ec2cb759095dc21b9a4a32"
+};
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+const colAst = collection(db, 'asistentes');
+const colReg = collection(db, 'registros');
+
+// ── Estado local (espejo de Firestore) ────────────────────────────────────────
+let asistentes = [];   // [{uid, id, nombre, apellidos, email, telefono, salaPlenaria, salaTalleres}]
+let registros  = [];   // [{uid, sala, ok, horaStr, fechaStr, nombre, apellidos, aId}]
+let salaActiva = 'plenaria';
+let scanning   = false;
+
+// ── Sync status ───────────────────────────────────────────────────────────────
+function setSyncStatus(state, msg) {
+  const bar  = document.getElementById('sync-bar');
+  const dot  = document.getElementById('sync-dot');
+  const txt  = document.getElementById('sync-txt');
+  bar.className  = 'sync-bar ' + state;
+  dot.className  = 'sync-dot' + (state === 'connecting' ? ' pulse' : '');
+  txt.textContent = msg;
 }
 
-function loadData() {
-  try {
-    const ast = localStorage.getItem('nfc_asistentes');
-    if (ast) asistentes = JSON.parse(ast);
-    const reg = localStorage.getItem('nfc_registros');
-    if (reg) {
-      const regSerial = JSON.parse(reg);
-      registros = regSerial.map(r => ({
-        ...r,
-        a: asistentes.find(a => a.uid === r.aId) || null
-      }));
-    }
-  } catch(e) { console.warn('Error cargando datos:', e); }
-}
+// ── Listeners en tiempo real ──────────────────────────────────────────────────
+onSnapshot(colAst, snap => {
+  asistentes = snap.docs.map(d => ({...d.data(), _docId: d.id}));
+  renderAstTable();
+  renderRecent();
+}, err => { setSyncStatus('error', 'Error de conexión'); console.error(err); });
+
+const qReg = query(colReg, orderBy('ts', 'desc'));
+onSnapshot(qReg, snap => {
+  registros = snap.docs.map(d => {
+    const r = d.data();
+    const a = asistentes.find(x => x.uid === r.aId) || null;
+    return {...r, a, _docId: d.id};
+  });
+  renderRecent();
+  renderLog();
+  document.getElementById('loading').classList.add('hidden');
+  setSyncStatus('live', 'Sincronizado en tiempo real');
+}, err => {
+  setSyncStatus('error', 'Error de conexión — comprueba internet');
+  document.getElementById('loading').classList.add('hidden');
+});
 
 // ── Acceso ────────────────────────────────────────────────────────────────────
 function puedeAcceder(a) { return salaActiva === 'plenaria' ? a.salaPlenaria : a.salaTalleres; }
 
 // ── Procesar lectura ──────────────────────────────────────────────────────────
-function procesarLectura(raw) {
-  const uid = raw.toUpperCase().replace(/[:\s\-]/g,'');
-  const a   = asistentes.find(x => x.uid === uid);
+async function procesarLectura(raw) {
+  const uid  = raw.toUpperCase().replace(/[:\s\-]/g,'');
+  const a    = asistentes.find(x => x.uid === uid);
   const hora = new Date();
   const horaStr  = hora.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
   const fechaStr = hora.toLocaleDateString('es-ES');
   const sala = salaActiva === 'plenaria' ? 'Sala Plenaria' : 'Sala Talleres';
+
   if (!a) { showUnknown(uid, horaStr, sala); return; }
   const ok = puedeAcceder(a);
-  registros.unshift({a, uid, sala, ok, horaStr, fechaStr});
-  saveData();
+
+  // Guardar en Firestore → se propaga a todos los dispositivos
+  try {
+    await addDoc(colReg, {
+      uid, sala, ok,
+      horaStr, fechaStr,
+      aId:       a.uid,
+      nombre:    a.nombre,
+      apellidos: a.apellidos,
+      ts:        serverTimestamp(),
+    });
+  } catch(e) { console.error('Error guardando registro:', e); }
+
   showResult(a, ok, horaStr, sala);
-  renderRecent();
 }
 
+// ── UI resultado ──────────────────────────────────────────────────────────────
 function showResult(a, ok, horaStr, sala) {
   const cl = ok ? 'ok' : 'deny';
-  document.getElementById('scan-area').className  = 'scanner-area ' + cl;
-  document.getElementById('scan-ring').className  = 'scan-ring ' + cl;
-  document.getElementById('scan-icon').textContent  = ok ? '✓' : '✕';
-  document.getElementById('scan-title').textContent = ok ? 'Acceso permitido' : 'Acceso denegado';
-  document.getElementById('scan-sub').textContent   = sala + ' · ' + horaStr;
+  document.getElementById('scan-area').className   = 'scanner-area ' + cl;
+  document.getElementById('scan-ring').className   = 'scan-ring ' + cl;
+  document.getElementById('scan-icon').textContent   = ok ? '✓' : '✕';
+  document.getElementById('scan-title').textContent  = ok ? 'Acceso permitido' : 'Acceso denegado';
+  document.getElementById('scan-sub').textContent    = sala + ' · ' + horaStr;
   const card = document.getElementById('result-card');
   card.className = 'result-card show ' + cl;
-  document.getElementById('rbadge').textContent = ok ? 'ACCESO OK' : 'DENEGADO';
-  document.getElementById('rbadge').className   = 'rbadge ' + cl;
-  document.getElementById('rname').textContent  = a.nombre + ' ' + a.apellidos;
-  document.getElementById('rmeta').textContent  = 'ID ' + a.id + (a.email ? ' · ' + a.email : '');
-  // Solo muestra la sala activa
+  document.getElementById('rbadge').textContent  = ok ? 'ACCESO OK' : 'DENEGADO';
+  document.getElementById('rbadge').className    = 'rbadge ' + cl;
+  document.getElementById('rname').textContent   = a.nombre + ' ' + a.apellidos;
+  document.getElementById('rmeta').textContent   = 'ID ' + a.id + (a.email ? ' · ' + a.email : '');
   document.getElementById('acceso-single-wrap').innerHTML =
     '<div class="acceso-single ' + (ok?'si':'no') + '">' +
-      '<span class="acceso-icon">' + (ok?'✓':'✕') + '</span>' +
-      sala +
+      '<span style="font-size:20px;">' + (ok?'✓':'✕') + '</span>' + sala +
     '</div>';
   document.getElementById('rdetail').textContent = ok
     ? 'Entrada registrada a las ' + horaStr + '.'
@@ -341,6 +404,7 @@ async function startScan() {
   document.getElementById('scan-ring').classList.add('pulse');
   document.getElementById('scan-title').textContent = 'Acerca la tarjeta';
   document.getElementById('scan-sub').textContent   = 'Mantén la tarjeta cerca del teléfono';
+
   if ('NDEFReader' in window) {
     try {
       const reader = new NDEFReader();
@@ -352,16 +416,17 @@ async function startScan() {
       }, {once:true});
       return;
     } catch(err) {
-      warn('Error NFC: ' + err.message + '. Usando modo simulación.');
+      warn('Error NFC: ' + err.message + '. Usando simulación.');
     }
   } else {
-    warn('Web NFC no disponible. Usa Chrome en Android con NFC activo, o prueba con simulación.');
+    warn('Web NFC no disponible. Usa Chrome en Android con NFC activo.');
   }
   document.getElementById('scan-ring').classList.remove('pulse');
   scanning = false;
   resetScanner();
   simular();
 }
+window.startScan = startScan;
 
 function simular() {
   const lista = asistentes.length
@@ -376,12 +441,12 @@ function warn(msg) {
   el.textContent = msg; el.classList.add('show');
 }
 
-function selectSala(s) {
+window.selectSala = function(s) {
   salaActiva = s;
   document.getElementById('btn-plenaria').className = 'sala-btn' + (s==='plenaria'?' sel':'');
   document.getElementById('btn-talleres').className  = 'sala-btn' + (s==='talleres'?' sel':'');
   resetScanner();
-}
+};
 
 // ── Renders ───────────────────────────────────────────────────────────────────
 function renderRecent() {
@@ -389,7 +454,7 @@ function renderRecent() {
     '<div class="ri">' +
       '<div class="dot ' + (r.ok?'ok':'deny') + '"></div>' +
       '<div style="flex:1;min-width:0;">' +
-        '<div class="ri-name">' + (r.a ? r.a.nombre+' '+r.a.apellidos : 'Desconocido') + '</div>' +
+        '<div class="ri-name">' + (r.nombre ? r.nombre+' '+r.apellidos : 'Desconocido') + '</div>' +
         '<div class="ri-info">' + r.sala + ' · ' + r.horaStr + '</div>' +
       '</div>' +
       '<div style="font-size:11px;color:' + (r.ok?'var(--green)':'var(--red)') + ';">' + (r.ok?'✓':'✕') + '</div>' +
@@ -399,92 +464,87 @@ function renderRecent() {
 
 function renderLog() {
   const list = document.getElementById('log-list');
-  if (!registros.length) { list.innerHTML = '<div class="empty-st">Sin registros todavía.<br>Empieza escaneando tarjetas.</div>'; }
-  else {
+  if (!registros.length) {
+    list.innerHTML = '<div class="empty-st">Sin registros todavía.</div>';
+  } else {
     list.innerHTML = registros.map(r =>
       '<div class="log-item">' +
         '<div class="dot ' + (r.ok?'ok':'deny') + '" style="margin-top:3px;"></div>' +
         '<div>' +
-          '<div class="log-name">' + (r.a ? r.a.nombre+' '+r.a.apellidos : 'Desconocido · '+r.uid) + '</div>' +
-          '<div class="log-meta">' + r.sala + (r.a ? ' · ID '+r.a.id : '') + '</div>' +
+          '<div class="log-name">' + (r.nombre ? r.nombre+' '+r.apellidos : 'Desconocido · '+r.uid) + '</div>' +
+          '<div class="log-meta">' + r.sala + (r.aId ? ' · '+r.uid : '') + '</div>' +
         '</div>' +
         '<div class="log-time">' + r.horaStr + '<br><span style="color:var(--text3)">' + r.fechaStr + '</span></div>' +
       '</div>'
     ).join('');
   }
   const total = registros.length, ok = registros.filter(r=>r.ok).length;
-  document.getElementById('stats-row').innerHTML =
-    '<div class="stat-box"><div class="stat-num">' + total + '</div><div class="stat-lbl">LECTURAS</div></div>' +
-    '<div class="stat-box"><div class="stat-num" style="color:var(--green)">' + ok + '</div><div class="stat-lbl">ACCESOS OK</div></div>' +
-    '<div class="stat-box"><div class="stat-num" style="color:var(--red)">' + (total-ok) + '</div><div class="stat-lbl">DENEGADOS</div></div>';
+  document.getElementById('s-total').textContent = total;
+  document.getElementById('s-ok').textContent    = ok;
+  document.getElementById('s-deny').textContent  = total - ok;
 }
 
 function renderAstTable() {
   document.getElementById('ast-count').textContent = asistentes.length ? '('+asistentes.length+')' : '';
-  // Persist status badge
-  const ps = document.getElementById('persist-status');
-  if (ps && asistentes.length) {
-    ps.innerHTML = '<div class="persist-badge">✓ ' + asistentes.length + ' asistentes guardados en el dispositivo</div>';
-  }
   document.getElementById('ast-tbody').innerHTML = asistentes.length
     ? asistentes.map(a =>
         '<tr>' +
-          '<td class="mono">' + a.id + '</td>' +
-          '<td>' + a.nombre + ' ' + a.apellidos + '</td>' +
+          '<td class="mono">' + (a.id||'') + '</td>' +
+          '<td>' + (a.nombre||'') + ' ' + (a.apellidos||'') + '</td>' +
           '<td class="mono">' + a.uid + '</td>' +
           '<td><span class="' + (a.salaPlenaria?'si-b':'no-b') + '">' + (a.salaPlenaria?'SI':'NO') + '</span></td>' +
           '<td><span class="' + (a.salaTalleres?'si-b':'no-b') + '">' + (a.salaTalleres?'SI':'NO') + '</span></td>' +
-          '<td><button class="btn-del-row" onclick="deleteAst(\'' + a.uid + '\')">×</button></td>' +
+          '<td><button class="btn-del-row" onclick="deleteAst(\'' + a._docId + '\')">×</button></td>' +
         '</tr>'
       ).join('')
     : '<tr><td colspan="6" style="color:var(--text3);text-align:center;padding:24px;font-size:12px;">Sin asistentes. Importa un CSV o añade manualmente.</td></tr>';
 }
 
 // ── Alta manual ───────────────────────────────────────────────────────────────
-function addManual() {
-  const uid      = document.getElementById('m-uid').value.trim().toUpperCase().replace(/[:\s\-]/g,'');
-  const nombre   = document.getElementById('m-nombre').value.trim();
-  if (!uid)    { showFb('error', 'El UID NFC es obligatorio.'); return; }
-  if (!nombre) { showFb('error', 'El nombre es obligatorio.'); return; }
-  if (asistentes.find(a => a.uid === uid)) { showFb('error', 'Ya existe un asistente con ese UID.'); return; }
-  asistentes.push({
-    uid,
-    id:           document.getElementById('m-id').value.trim() || String(asistentes.length + 1),
-    nombre,
-    apellidos:    document.getElementById('m-apellidos').value.trim(),
-    email:        document.getElementById('m-email').value.trim(),
-    telefono:     document.getElementById('m-telefono').value.trim(),
-    salaPlenaria: document.getElementById('m-plenaria').checked,
-    salaTalleres: document.getElementById('m-talleres').checked,
-  });
-  saveData();
-  renderAstTable();
-  // Limpiar form
-  ['m-uid','m-id','m-nombre','m-apellidos','m-email','m-telefono'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('m-plenaria').checked = true;
-  document.getElementById('m-talleres').checked = true;
-  showFb('ok', '✓ Asistente añadido correctamente.');
-}
+window.addManual = async function() {
+  const uid    = document.getElementById('m-uid').value.trim().toUpperCase().replace(/[:\s\-]/g,'');
+  const nombre = document.getElementById('m-nombre').value.trim();
+  if (!uid)    { showFb('error','El UID NFC es obligatorio.'); return; }
+  if (!nombre) { showFb('error','El nombre es obligatorio.'); return; }
+  if (asistentes.find(a => a.uid === uid)) { showFb('error','Ya existe un asistente con ese UID.'); return; }
+  try {
+    await setDoc(doc(colAst, uid), {
+      uid,
+      id:           document.getElementById('m-id').value.trim() || String(Date.now()),
+      nombre,
+      apellidos:    document.getElementById('m-apellidos').value.trim(),
+      email:        document.getElementById('m-email').value.trim(),
+      telefono:     document.getElementById('m-telefono').value.trim(),
+      salaPlenaria: document.getElementById('m-plenaria').checked,
+      salaTalleres: document.getElementById('m-talleres').checked,
+    });
+    ['m-uid','m-id','m-nombre','m-apellidos','m-email','m-telefono'].forEach(id => document.getElementById(id).value='');
+    document.getElementById('m-plenaria').checked = true;
+    document.getElementById('m-talleres').checked = true;
+    showFb('ok','✓ Asistente añadido y sincronizado.');
+  } catch(e) { showFb('error','Error al guardar: ' + e.message); }
+};
 
-function deleteAst(uid) {
-  asistentes = asistentes.filter(a => a.uid !== uid);
-  saveData();
-  renderAstTable();
-}
+window.deleteAst = async function(docId) {
+  if (!confirm('¿Eliminar este asistente?')) return;
+  try { await deleteDoc(doc(db, 'asistentes', docId)); } catch(e) { alert('Error: '+e.message); }
+};
 
-function clearAst() {
-  if (!confirm('¿Borrar todos los asistentes? Esta acción no se puede deshacer.')) return;
-  asistentes = [];
-  saveData();
-  renderAstTable();
-}
+window.clearAst = async function() {
+  if (!confirm('¿Borrar TODOS los asistentes de todos los dispositivos?')) return;
+  const snap = await getDocs(colAst);
+  const batch = writeBatch(db);
+  snap.docs.forEach(d => batch.delete(d.ref));
+  await batch.commit();
+};
 
-function clearRegistros() {
+window.clearRegistros = async function() {
   if (!confirm('¿Borrar todo el historial de registros?')) return;
-  registros = [];
-  saveData();
-  renderLog();
-}
+  const snap = await getDocs(colReg);
+  const batch = writeBatch(db);
+  snap.docs.forEach(d => batch.delete(d.ref));
+  await batch.commit();
+};
 
 // ── CSV Import ────────────────────────────────────────────────────────────────
 function parseLine(line) {
@@ -499,10 +559,10 @@ function parseLine(line) {
 }
 function norm(s){ return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,''); }
 
-function importCSV(input) {
+window.importCSV = async function(input) {
   const file = input.files[0]; if(!file) return;
   const fr = new FileReader();
-  fr.onload = function(e) {
+  fr.onload = async function(e) {
     const lines = e.target.result.trim().split(/\r?\n/).filter(l=>l.trim());
     if(lines.length < 2){ showFb('error','El archivo está vacío o solo tiene cabecera.'); return; }
     const header = parseLine(lines[0]).map(norm);
@@ -520,37 +580,68 @@ function importCSV(input) {
     if(fi.nombre<0)   { showFb('error','Columna Nombre no encontrada.'); return; }
     if(fi.plenaria<0) { showFb('error','Columna "Sala Plenaria" no encontrada.'); return; }
     if(fi.talleres<0) { showFb('error','Columna "Sala Talleres" no encontrada.'); return; }
+
     const existing = new Set(asistentes.map(a=>a.uid));
+    const siNo = v => (v||'').trim().toUpperCase()==='SI';
     let imp=0, omit=0;
-    const nuevos=[];
+
+    // Subir en lotes de 500 (límite de Firestore batch)
+    const nuevos = [];
     lines.slice(1).forEach((line,i)=>{
       const c = parseLine(line);
       const uid=(c[fi.uid]||'').toUpperCase().replace(/[:\s\-]/g,'');
-      if(!uid){omit++;return;}
-      if(existing.has(uid)){omit++;return;}
-      const siNo = v => (v||'').trim().toUpperCase()==='SI';
+      if(!uid||existing.has(uid)){omit++;return;}
       nuevos.push({
         uid,
-        id:          fi.id>=0       ? c[fi.id]        : String(i+1),
-        nombre:      fi.nombre>=0   ? c[fi.nombre]    : '',
-        apellidos:   fi.apellidos>=0 ? c[fi.apellidos]: '',
-        email:       fi.email>=0    ? c[fi.email]     : '',
-        telefono:    fi.telefono>=0  ? c[fi.telefono] : '',
+        id:          fi.id>=0       ? c[fi.id]         : String(i+1),
+        nombre:      fi.nombre>=0   ? c[fi.nombre]     : '',
+        apellidos:   fi.apellidos>=0 ? c[fi.apellidos] : '',
+        email:       fi.email>=0    ? c[fi.email]      : '',
+        telefono:    fi.telefono>=0  ? c[fi.telefono]  : '',
         salaPlenaria:siNo(c[fi.plenaria]),
         salaTalleres:siNo(c[fi.talleres]),
       });
       existing.add(uid); imp++;
     });
-    asistentes=[...asistentes,...nuevos];
-    saveData();
-    renderAstTable();
+
+    // Escribir en lotes
+    for(let i=0;i<nuevos.length;i+=500){
+      const batch = writeBatch(db);
+      nuevos.slice(i,i+500).forEach(a => batch.set(doc(colAst, a.uid), a));
+      await batch.commit();
+    }
+
     input.value='';
-    if(imp>0&&omit===0) showFb('ok','✓ '+imp+' asistentes importados y guardados.');
+    if(imp>0&&omit===0) showFb('ok','✓ '+imp+' asistentes importados y sincronizados en todos los dispositivos.');
     else if(imp>0)       showFb('ok','✓ '+imp+' importados. '+omit+' omitidos (duplicados o sin UID).');
     else                 showFb('error','No se importó ningún asistente. Revisa las columnas del CSV.');
   };
   fr.readAsText(file,'UTF-8');
-}
+};
+
+// ── Export ────────────────────────────────────────────────────────────────────
+window.exportCSV = function() {
+  if(!registros.length){alert('No hay registros todavía.');return;}
+  const rows=[['Nombre','Apellidos','UID','Sala','Acceso','Hora','Fecha']];
+  registros.forEach(r=>rows.push([
+    r.nombre||'Desconocido', r.apellidos||'', r.uid,
+    r.sala, r.ok?'OK':'DENEGADO', r.horaStr, r.fechaStr,
+  ]));
+  const csv=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download='registro-asistencia.csv'; a.click();
+};
+
+// ── Vistas ────────────────────────────────────────────────────────────────────
+window.showView = function(v,btn) {
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(el=>el.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  btn.classList.add('active');
+  if(v==='registro') renderLog();
+  if(v==='admin')    renderAstTable();
+};
 
 function showFb(type, msg) {
   const el=document.getElementById('imp-fb');
@@ -562,34 +653,6 @@ function showFb(type, msg) {
   setTimeout(()=>el.style.display='none',6000);
 }
 
-// ── Export ────────────────────────────────────────────────────────────────────
-function exportCSV() {
-  if(!registros.length){alert('No hay registros todavía.');return;}
-  const rows=[['Nombre','Apellidos','ID','UID','Email','Teléfono','Sala','Acceso','Hora','Fecha']];
-  registros.forEach(r=>rows.push([
-    r.a?r.a.nombre:'Desconocido', r.a?r.a.apellidos:'',
-    r.a?r.a.id:'', r.uid, r.a?r.a.email:'', r.a?r.a.telefono:'',
-    r.sala, r.ok?'OK':'DENEGADO', r.horaStr, r.fechaStr,
-  ]));
-  const csv=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
-  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob); a.download='registro-asistencia.csv'; a.click();
-}
-
-// ── Vistas ────────────────────────────────────────────────────────────────────
-function showView(v,btn) {
-  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
-  document.querySelectorAll('.nav-tab').forEach(el=>el.classList.remove('active'));
-  document.getElementById('view-'+v).classList.add('active');
-  btn.classList.add('active');
-  if(v==='registro') renderLog();
-  if(v==='admin')    renderAstTable();
-}
-
-// ── Init ──────────────────────────────────────────────────────────────────────
-loadData();
-renderRecent();
 </script>
 </body>
 </html>
