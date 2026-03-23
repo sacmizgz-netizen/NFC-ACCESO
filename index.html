@@ -306,22 +306,24 @@ window.pinKey = function(d) {
   _pinBuffer += d;
   _updateDots(false);
   if (_pinBuffer.length === 4) {
-    if (_pinReady && window.__checkPin) {
-      window.__checkPin(_pinBuffer);
-      _pinBuffer = '';
+    var buf = _pinBuffer;
+    _pinBuffer = '';
+    if (window.__checkPin) {
+      window.__checkPin(buf);
     } else {
-      _pendingCheck = true; // module not ready yet, try again shortly
-      var buf = _pinBuffer;
-      _pinBuffer = '';
+      // Firebase still loading — show waiting message and keep retrying
+      document.getElementById('pin-error').textContent = 'Conectando…';
       var tries = 0;
       var wait = setInterval(function(){
         tries++;
         if (window.__checkPin) {
           clearInterval(wait);
+          document.getElementById('pin-error').textContent = '';
           window.__checkPin(buf);
-        } else if (tries > 40) {
+        } else if (tries > 150) {
+          // 15 seconds max
           clearInterval(wait);
-          document.getElementById('pin-error').textContent = 'Error de conexión. Recarga la página.';
+          document.getElementById('pin-error').textContent = 'Sin conexión. Comprueba internet y recarga.';
         }
       }, 100);
     }
@@ -418,10 +420,13 @@ function pinFb(type,msg){
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
-await loadPin();
-// Expose checkPin to the plain PIN script
+// Expose checkPin immediately with default PIN — works even if Firebase is slow
 window.__checkPin = checkPin;
 window._setPinReady();
+
+// Then try to load the real PIN from Firebase (may update currentPin)
+loadPin().catch(()=>{});  // never blocks
+
 if(sessionStorage.getItem('nfc_unlocked')==='1'){
   document.getElementById('pin-screen').classList.add('hidden');
   document.getElementById('loading').classList.remove('hidden');
