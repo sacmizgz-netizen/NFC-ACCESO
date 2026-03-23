@@ -564,14 +564,14 @@ window.importCSV = async function(input) {
       const s = (v||'').toString().trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
       return ['SI','S','1','TRUE','VERDADERO','YES'].includes(s);
     };
-    const existing = new Set(asistentes.map(a => a.uid));
-    let imp = 0, omit = 0;
-    const nuevos = [];
+    let imp = 0, act = 0, omit = 0;
+    const filas = [];
     lines.slice(1).forEach((line, i) => {
       const c   = parseLine(line, sep);
       const uid = (c[fi.uid]||'').toUpperCase().replace(/[:\s\-]/g,'');
-      if (!uid || existing.has(uid)) { omit++; return; }
-      nuevos.push({
+      if (!uid) { omit++; return; }
+      const yaExiste = asistentes.find(a => a.uid === uid);
+      filas.push({
         uid,
         id:           fi.id >= 0        ? String(c[fi.id]||'').trim()        : String(i+1),
         nombre:       fi.nombre >= 0    ? String(c[fi.nombre]||'').trim()    : '',
@@ -582,17 +582,26 @@ window.importCSV = async function(input) {
         salaSidi:     siNo(c[fi.sidi]),
         salaTalleres: siNo(c[fi.talleres]),
       });
-      existing.add(uid); imp++;
+      if (yaExiste) act++; else imp++;
     });
-    for (let i = 0; i < nuevos.length; i += 500) {
+    // Escribir todos en Firestore (setDoc sobreescribe si ya existe)
+    for (let i = 0; i < filas.length; i += 500) {
       const b = writeBatch(db);
-      nuevos.slice(i, i+500).forEach(a => b.set(doc(colAst, a.uid), a));
+      filas.slice(i, i+500).forEach(a => b.set(doc(colAst, a.uid), a));
       await b.commit();
     }
     input.value = '';
-    if (imp > 0 && omit === 0) showFb('ok', '✓ ' + imp + ' asistentes importados correctamente.');
-    else if (imp > 0)           showFb('ok', '✓ ' + imp + ' importados. ' + omit + ' omitidos.');
-    else                        showFb('error', 'No se importó ningún asistente. Cabeceras detectadas: ' + header.join(', '));
+    const total = imp + act;
+    if (total > 0) {
+      let msg = '✓ ' + total + ' asistentes procesados';
+      if (imp > 0 && act > 0) msg += ' (' + imp + ' nuevos, ' + act + ' actualizados)';
+      else if (imp > 0)       msg += ' (' + imp + ' nuevos)';
+      else                    msg += ' (' + act + ' actualizados)';
+      if (omit > 0)           msg += '. ' + omit + ' filas omitidas (sin UID).';
+      showFb('ok', msg);
+    } else {
+      showFb('error', 'No se procesó ningún asistente. Cabeceras detectadas: ' + header.join(', '));
+    }
   };
   fr.readAsText(file, 'UTF-8');
 };
