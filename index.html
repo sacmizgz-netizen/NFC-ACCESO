@@ -111,6 +111,8 @@
   @keyframes spin{to{transform:rotate(360deg)}}
   .nfc-status{font-size:12px;font-family:'DM Mono',monospace;padding:8px 12px;border-radius:var(--radius-sm);margin-bottom:8px;display:none;}
 </style>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://apis.google.com/js/api.js" async defer></script>
 </head>
 <body>
 
@@ -185,6 +187,13 @@
       <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">Se sincroniza en todos los dispositivos automáticamente</div>
       <input type="file" id="csv-input" accept=".csv,.txt" style="display:none" onchange="importCSV(this)">
     </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <button class="btn-add" id="btn-drive" onclick="importFromDrive()" style="flex:1;padding:12px;display:flex;align-items:center;justify-content:center;gap:8px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6.5 20L1 11l4.5-8h13L23 11l-5.5 9H6.5z" stroke="currentColor" stroke-width="1.5"/><path d="M1 11h22M8.5 3l-3 8M15.5 3l3 8M6.5 20l5.5-9 5.5 9" stroke="currentColor" stroke-width="1.5"/></svg>
+        Importar desde Google Drive
+      </button>
+    </div>
+    <div id="drive-fb" class="imp-fb"></div>
     <div class="imp-fb" id="imp-fb"></div>
     <div class="fmt-box">
       <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:8px;">COLUMNAS DETECTADAS AUTOMÁTICAMENTE</div>
@@ -571,7 +580,10 @@ window.importCSV = async function(input) {
   const file = input.files[0]; if (!file) return;
   const fr = new FileReader();
   fr.onload = async function(e) {
-    const lines = e.target.result.trim().split(/\r?\n/).filter(l => l.trim());
+    const raw   = e.target.result.replace(/^﻿/, '').replace(/
+/g,'\n').replace(/
+/g,'\n');
+    const lines = raw.trim().split('\n').filter(l => l.trim());
     if (lines.length < 2) { showFb('error', 'Archivo vacío.'); return; }
     const sep    = detectSep(lines);
     const header = parseLine(lines[0], sep).map(norm);
@@ -628,6 +640,160 @@ window.importCSV = async function(input) {
   };
   fr.readAsText(file, 'UTF-8');
 };
+
+// ── Google Drive Import ──────────────────────────────────────────────────────
+const GOOG_CLIENT_ID = '54196258743-392lur7317v69c6vm8bl5a730coe3iid.apps.googleusercontent.com';
+const GOOG_SCOPES    = 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/spreadsheets.readonly';
+let gapiReady = false, gisReady = false, tokenClient = null, accessToken = null;
+
+function waitForGapi(cb) {
+  if (typeof gapi !== 'undefined') { cb(); return; }
+  setTimeout(() => waitForGapi(cb), 200);
+}
+function waitForGoogle(cb) {
+  if (typeof google !== 'undefined' && google.accounts) { cb(); return; }
+  setTimeout(() => waitForGoogle(cb), 200);
+}
+
+waitForGapi(() => {
+  gapi.load('client:picker', async () => {
+    await gapi.client.init({});
+    await gapi.client.load('https://sheets.googleapis.com/$discovery/rest?version=v4');
+    gapiReady = true;
+  });
+});
+
+waitForGoogle(() => {
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GOOG_CLIENT_ID,
+    scope: GOOG_SCOPES,
+    callback: async (resp) => {
+      if (resp.error) { showDriveFb('error', 'Error de autenticación: ' + resp.error); return; }
+      accessToken = resp.access_token;
+      openPicker();
+    }
+  });
+  gisReady = true;
+});
+
+function showDriveFb(type, msg) {
+  const el = document.getElementById('drive-fb');
+  el.style.display    = 'block';
+  el.style.background = type==='ok' ? 'var(--green-bg)' : type==='info' ? 'var(--blue-bg)' : 'var(--red-bg)';
+  el.style.border     = '1px solid ' + (type==='ok' ? 'var(--green-border)' : type==='info' ? 'rgba(77,159,255,.3)' : 'var(--red-border)');
+  el.style.color      = type==='ok' ? 'var(--green)' : type==='info' ? 'var(--blue)' : 'var(--red)';
+  el.textContent      = msg;
+  if (type !== 'info') setTimeout(() => el.style.display = 'none', 7000);
+}
+
+window.importFromDrive = function() {
+  if (!gapiReady || !gisReady) { showDriveFb('error', 'Cargando APIs de Google… espera un momento e inténtalo de nuevo.'); return; }
+  const btn = document.getElementById('btn-drive');
+  btn.disabled = true;
+  btn.textContent = 'Conectando con Google…';
+  if (accessToken) {
+    openPicker();
+  } else {
+    tokenClient.requestAccessToken({prompt: 'consent'});
+  }
+};
+
+function openPicker() {
+  const btn = document.getElementById('btn-drive');
+  btn.disabled = false;
+  btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6.5 20L1 11l4.5-8h13L23 11l-5.5 9H6.5z" stroke="currentColor" stroke-width="1.5"/><path d="M1 11h22M8.5 3l-3 8M15.5 3l3 8M6.5 20l5.5-9 5.5 9" stroke="currentColor" stroke-width="1.5"/></svg> Importar desde Google Drive';
+  const picker = new google.picker.PickerBuilder()
+    .addView(new google.picker.DocsView(google.picker.ViewId.SPREADSHEETS).setIncludeFolders(true))
+    .setOAuthToken(accessToken)
+    .setDeveloperKey('')
+    .setCallback(pickerCallback)
+    .setTitle('Selecciona tu hoja de cálculo')
+    .build();
+  picker.setVisible(true);
+}
+
+async function pickerCallback(data) {
+  if (data.action !== google.picker.Action.PICKED) return;
+  const file = data.docs[0];
+  showDriveFb('info', 'Leyendo hoja: ' + file.name + '…');
+  try {
+    // Get all sheets in the spreadsheet
+    const meta = await gapi.client.sheets.spreadsheets.get({ spreadsheetId: file.id });
+    const sheets = meta.result.sheets;
+    let sheetName = sheets[0].properties.title;
+    // If multiple sheets, ask which one
+    if (sheets.length > 1) {
+      const names = sheets.map((s,i) => (i+1)+'. '+s.properties.title).join('
+');
+      const choice = prompt('El archivo tiene varias hojas. ¿Cuál quieres importar?
+
+' + names + '
+
+Escribe el número:');
+      const idx = parseInt(choice) - 1;
+      if (!isNaN(idx) && idx >= 0 && idx < sheets.length) sheetName = sheets[idx].properties.title;
+    }
+    // Fetch sheet data
+    const resp = await gapi.client.sheets.spreadsheets.values.get({
+      spreadsheetId: file.id,
+      range: sheetName,
+    });
+    const rows = resp.result.values;
+    if (!rows || rows.length < 2) { showDriveFb('error', 'La hoja está vacía o solo tiene cabecera.'); return; }
+    // Process rows — same logic as CSV but data is already parsed into arrays
+    const header = rows[0].map(h => norm(String(h)));
+    const fi = {
+      uid:      header.findIndex(h => h === 'uid'),
+      id:       header.findIndex(h => h === 'id'),
+      nombre:   header.findIndex(h => h === 'nombre'),
+      apellidos:header.findIndex(h => h === 'apellidos' || h === 'apellido'),
+      email:    header.findIndex(h => h === 'email'),
+      telefono: header.findIndex(h => h === 'telefono' || h === 'tlf' || h === 'phone'),
+      servei:   header.findIndex(h => h.includes('servei')),
+      sidi:     header.findIndex(h => h.includes('sidi')),
+      talleres: header.findIndex(h => h.includes('taller')),
+    };
+    if (fi.uid < 0)     { showDriveFb('error', 'Columna UID no encontrada. Cabeceras: ' + header.join(', ')); return; }
+    if (fi.nombre < 0)  { showDriveFb('error', 'Columna Nombre no encontrada.'); return; }
+    if (fi.servei < 0)  { showDriveFb('error', 'Columna SERVEI no encontrada. Cabeceras: ' + header.join(', ')); return; }
+    if (fi.sidi < 0)    { showDriveFb('error', 'Columna SIDI no encontrada. Cabeceras: ' + header.join(', ')); return; }
+    if (fi.talleres < 0){ showDriveFb('error', 'Columna Talleres no encontrada. Cabeceras: ' + header.join(', ')); return; }
+    const siNo = v => {
+      const s = (v||'').toString().trim().toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+      return ['SI','S','1','TRUE','VERDADERO','YES'].includes(s);
+    };
+    const existing = new Set(asistentes.map(a => a.uid));
+    let imp = 0, omit = 0;
+    const nuevos = [];
+    rows.slice(1).forEach((row, i) => {
+      const uid = (row[fi.uid]||'').toString().toUpperCase().replace(/[:\s\-]/g,'');
+      if (!uid || existing.has(uid)) { omit++; return; }
+      nuevos.push({
+        uid,
+        id:           fi.id >= 0        ? String(row[fi.id]||'').trim()        : String(i+1),
+        nombre:       fi.nombre >= 0    ? String(row[fi.nombre]||'').trim()    : '',
+        apellidos:    fi.apellidos >= 0  ? String(row[fi.apellidos]||'').trim() : '',
+        email:        fi.email >= 0     ? String(row[fi.email]||'').trim()     : '',
+        telefono:     fi.telefono >= 0   ? String(row[fi.telefono]||'').trim()  : '',
+        salaServei:   siNo(row[fi.servei]),
+        salaSidi:     siNo(row[fi.sidi]),
+        salaTalleres: siNo(row[fi.talleres]),
+      });
+      existing.add(uid); imp++;
+    });
+    for (let i = 0; i < nuevos.length; i += 500) {
+      const b = writeBatch(db);
+      nuevos.slice(i, i+500).forEach(a => b.set(doc(colAst, a.uid), a));
+      await b.commit();
+    }
+    if (imp > 0 && omit === 0) showDriveFb('ok', '✓ ' + imp + ' asistentes importados desde "' + file.name + '".');
+    else if (imp > 0)           showDriveFb('ok', '✓ ' + imp + ' importados. ' + omit + ' omitidos (duplicados o sin UID).');
+    else                        showDriveFb('error', 'No se importó ningún asistente. Cabeceras detectadas: ' + header.join(', '));
+  } catch(err) {
+    showDriveFb('error', 'Error al leer la hoja: ' + err.message);
+    console.error(err);
+  }
+}
 
 // ── Export ────────────────────────────────────────────────────────────────────
 window.exportCSV = function() {
