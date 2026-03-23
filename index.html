@@ -272,6 +272,14 @@ const colReg = collection(db, 'registros');
 let asistentes = [], registros = [], salaActiva = 'servei', scanning = false;
 
 // ── Sync status ───────────────────────────────────────────────────────────────
+// Timeout: if Firebase doesn't respond in 10s, show helpful message
+setTimeout(() => {
+  if (document.getElementById('loading') && !document.getElementById('loading').classList.contains('hidden')) {
+    document.getElementById('loading').classList.add('hidden');
+    setSyncStatus('error', 'Sin respuesta de Firebase. Comprueba tu conexión a internet.');
+  }
+}, 10000);
+
 function setSyncStatus(state, msg) {
   document.getElementById('sync-bar').className = 'sync-bar ' + state;
   document.getElementById('sync-dot').className = 'sync-dot' + (state === 'connecting' ? ' pulse' : '');
@@ -284,7 +292,7 @@ onSnapshot(colAst, snap => {
   renderAstTable();
   renderRecent();
 }, err => {
-  setSyncStatus('error', 'Error: ' + err.message);
+  setSyncStatus('error', 'Error asistentes: ' + err.code + ' — ' + err.message);
   document.getElementById('loading').classList.add('hidden');
 });
 
@@ -296,7 +304,7 @@ onSnapshot(qReg, snap => {
   document.getElementById('loading').classList.add('hidden');
   setSyncStatus('live', 'Sincronizado en tiempo real');
 }, err => {
-  setSyncStatus('error', 'Error: ' + err.message);
+  setSyncStatus('error', 'Error registros: ' + err.code + ' — ' + err.message);
   document.getElementById('loading').classList.add('hidden');
 });
 
