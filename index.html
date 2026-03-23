@@ -294,6 +294,59 @@
   </div>
 </div>
 
+
+<script>
+// PIN UI — plain script so onclick handlers work immediately
+var _pinBuffer = '';
+var _pinReady  = false;
+var _pendingCheck = false;
+
+window.pinKey = function(d) {
+  if (_pinBuffer.length >= 4) return;
+  _pinBuffer += d;
+  _updateDots(false);
+  if (_pinBuffer.length === 4) {
+    if (_pinReady && window.__checkPin) {
+      window.__checkPin(_pinBuffer);
+      _pinBuffer = '';
+    } else {
+      _pendingCheck = true; // module not ready yet, try again shortly
+      var buf = _pinBuffer;
+      _pinBuffer = '';
+      var tries = 0;
+      var wait = setInterval(function(){
+        tries++;
+        if (window.__checkPin) {
+          clearInterval(wait);
+          window.__checkPin(buf);
+        } else if (tries > 40) {
+          clearInterval(wait);
+          document.getElementById('pin-error').textContent = 'Error de conexión. Recarga la página.';
+        }
+      }, 100);
+    }
+  }
+};
+
+window.pinDel = function() {
+  _pinBuffer = _pinBuffer.slice(0, -1);
+  _updateDots(false);
+};
+
+function _updateDots(err) {
+  for (var i = 0; i < 4; i++) {
+    var d = document.getElementById('pd' + i);
+    if (!d) continue;
+    d.className = 'pin-dot';
+    if (err) d.classList.add('error');
+    else if (i < _pinBuffer.length) d.classList.add('filled');
+  }
+}
+
+// Expose so module can call it too
+window._updateDots = _updateDots;
+window._setPinReady = function() { _pinReady = true; };
+</script>
 <script type="module">
 import { initializeApp }   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getFirestore, collection, doc, setDoc, getDoc,
@@ -316,7 +369,7 @@ const colAst = collection(db,'asistentes');
 const colReg = collection(db,'registros');
 const cfgRef = doc(db,'config','app');
 
-let pinBuffer='', currentPin=PIN_DEFAULT;
+let currentPin=PIN_DEFAULT;
 let asistentes=[], registros=[], salaActiva='servei', scanning=false;
 
 // ── PIN ───────────────────────────────────────────────────────────────────────
@@ -324,36 +377,16 @@ async function loadPin(){
   try{ const s=await getDoc(cfgRef); if(s.exists()&&s.data().pin) currentPin=s.data().pin; }catch(e){}
 }
 
-window.pinKey = function(d){
-  if(pinBuffer.length>=4) return;
-  pinBuffer+=d;
-  updateDots(false);
-  if(pinBuffer.length===4) checkPin();
-};
-window.pinDel = function(){
-  pinBuffer=pinBuffer.slice(0,-1);
-  updateDots(false);
-};
-
-function updateDots(err){
-  for(let i=0;i<4;i++){
-    const d=document.getElementById('pd'+i);
-    d.className='pin-dot';
-    if(err) d.classList.add('error');
-    else if(i<pinBuffer.length) d.classList.add('filled');
-  }
-}
-
-function checkPin(){
-  if(pinBuffer===currentPin){
+function checkPin(pin){
+  if(pin===currentPin){
     sessionStorage.setItem('nfc_unlocked','1');
     document.getElementById('pin-screen').classList.add('hidden');
     document.getElementById('loading').classList.remove('hidden');
     initFirestore();
   } else {
-    updateDots(true);
+    window._updateDots(true);
     document.getElementById('pin-error').textContent='PIN incorrecto';
-    setTimeout(()=>{ pinBuffer=''; updateDots(false); document.getElementById('pin-error').textContent=''; },1000);
+    setTimeout(()=>{ window._updateDots(false); document.getElementById('pin-error').textContent=''; },1000);
   }
 }
 
@@ -386,6 +419,9 @@ function pinFb(type,msg){
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 await loadPin();
+// Expose checkPin to the plain PIN script
+window.__checkPin = checkPin;
+window._setPinReady();
 if(sessionStorage.getItem('nfc_unlocked')==='1'){
   document.getElementById('pin-screen').classList.add('hidden');
   document.getElementById('loading').classList.remove('hidden');
@@ -629,7 +665,8 @@ window.importCSV=async function(input){
   fr.onload=async function(e){
     // Try UTF-8 first, then latin1 fallback handled by readAsText
     const raw=e.target.result;
-    const lines=raw.trim().split(/?
+    const lines=raw.trim().split(/
+?
 /).filter(l=>l.trim());
     if(lines.length<2){ showFb('error','Archivo vacío.'); return; }
 
