@@ -241,6 +241,32 @@
 
 </div>
 
+<!-- EDIT MODAL -->
+<div id="edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);padding:20px;width:100%;max-width:420px;">
+    <div style="font-size:15px;font-weight:600;margin-bottom:16px;">Editar asistente</div>
+    <input type="hidden" id="e-docid">
+    <input type="hidden" id="e-uid">
+    <div class="form-row"><input class="form-input" id="e-id" placeholder="ID"></div>
+    <div class="form-row"><input class="form-input" id="e-nombre" placeholder="Apellidos y Nombre"></div>
+    <div class="form-row" style="align-items:center;">
+      <input class="form-input" id="e-nfc" placeholder="NFC" style="flex:1;">
+      <button class="btn-add" id="e-btn-nfc" onclick="readNfcForEdit()" style="flex-shrink:0;">📡 Leer</button>
+    </div>
+    <div id="e-uid-status" class="uid-status"></div>
+    <div class="checks-row" style="margin-top:4px;">
+      <label class="form-check"><input type="checkbox" id="e-sidi"> Sala SIDI</label>
+      <label class="form-check"><input type="checkbox" id="e-servei"> Sala SERVEI</label>
+      <label class="form-check"><input type="checkbox" id="e-talleres"> Talleres</label>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px;">
+      <button class="btn-add" style="flex:1;padding:11px;" onclick="saveEdit()">Guardar</button>
+      <button class="btn-add" style="padding:11px;border-color:rgba(255,77,106,.3);color:var(--red);" onclick="closeEdit()">Cancelar</button>
+    </div>
+    <div class="imp-fb" id="edit-fb" style="margin-top:10px;margin-bottom:0;"></div>
+  </div>
+</div>
+
 <script type="module">
 import { initializeApp }   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getFirestore, collection, doc, setDoc,
@@ -349,11 +375,12 @@ async function writeRegistroToSheets(registro) {
     await fetch(SCRIPT_URL + '?action=addRegistro', {
       method: 'POST',
       body: JSON.stringify([
-        registro.fechaStr, registro.horaStr,
+        registro.id    || '',
+        registro.uid   || '',
         registro.nombre || 'Desconocido',
-        registro.uid, registro.sala,
-        registro.ok ? 'OK' : 'DENEGADO',
-        registro.id || ''
+        registro.sala  || '',
+        registro.horaStr || '',
+        registro.fechaStr || ''
       ])
     });
   } catch(e) { console.warn('No se pudo escribir registro en Sheets:', e); }
@@ -530,22 +557,124 @@ function renderAstTable() {
         '<td><span class="'+(a.salaSidi?'si-b':'no-b')+'">'+(a.salaSidi?'SI':'NO')+'</span></td>'+
         '<td><span class="'+(a.salaServei?'si-b':'no-b')+'">'+(a.salaServei?'SI':'NO')+'</span></td>'+
         '<td><span class="'+(a.salaTalleres?'si-b':'no-b')+'">'+(a.salaTalleres?'SI':'NO')+'</span></td>'+
-        '<td><button class="btn-del-row" onclick="deleteAst(\''+a._docId+'\')">×</button></td></tr>'
+        '<td style="display:flex;gap:4px;"><button class="btn-del-row" onclick="openEdit(\''+a._docId+'\')" title="Editar">✏️</button><button class="btn-del-row" onclick="deleteAst(\''+a._docId+'\')" title="Eliminar">×</button></td></tr>'
       ).join('')
     : '<tr><td colspan="7" style="color:var(--text3);text-align:center;padding:24px;font-size:12px;">Sin asistentes.</td></tr>';
 }
 
 // ── CRUD ──────────────────────────────────────────────────────────────────────
+// ── ID automático ─────────────────────────────────────────────────────────────
+function getNextId() {
+  const ids = asistentes
+    .map(a => parseInt((a.id||'0').replace(/\D/g,''), 10))
+    .filter(n => !isNaN(n));
+  const max = ids.length ? Math.max(...ids) : 0;
+  return String(max + 1).padStart(4, '0');
+}
+
+// ── Editar asistente ──────────────────────────────────────────────────────────
+window.openEdit = function(docId) {
+  const a = asistentes.find(x => x._docId === docId);
+  if (!a) return;
+  document.getElementById('e-docid').value   = docId;
+  document.getElementById('e-uid').value     = a.uid;
+  document.getElementById('e-id').value      = a.id || '';
+  document.getElementById('e-nombre').value  = a.nombre || '';
+  document.getElementById('e-nfc').value     = a.sinNfc ? '' : a.uid;
+  document.getElementById('e-sidi').checked     = !!a.salaSidi;
+  document.getElementById('e-servei').checked   = !!a.salaServei;
+  document.getElementById('e-talleres').checked = !!a.salaTalleres;
+  document.getElementById('e-uid-status').style.display = 'none';
+  document.getElementById('edit-fb').style.display = 'none';
+  document.getElementById('edit-modal').style.display = 'flex';
+};
+
+window.readNfcForEdit = async function() {
+  const btn    = document.getElementById('e-btn-nfc');
+  const status = document.getElementById('e-uid-status');
+  function setStatus(type, msg) {
+    status.style.display='block';
+    status.style.background=type==='ok'?'var(--green-bg)':type==='waiting'?'var(--blue-bg)':'var(--red-bg)';
+    status.style.border='1px solid '+(type==='ok'?'var(--green-border)':type==='waiting'?'rgba(77,159,255,.3)':'var(--red-border)');
+    status.style.color=type==='ok'?'var(--green)':type==='waiting'?'var(--blue)':'var(--red)';
+    status.textContent=msg;
+  }
+  if (!('NDEFReader' in window)) {
+    const uid = prompt('MODO SIMULACIÓN\nIntroduce el UID:');
+    if (uid && uid.trim()) {
+      document.getElementById('e-nfc').value = uid.trim().toUpperCase().replace(/[:\s\-]/g,'');
+      setStatus('ok','UID introducido.');
+    }
+    return;
+  }
+  btn.textContent='Acerca…'; btn.disabled=true;
+  setStatus('waiting','Esperando tarjeta NFC…');
+  try {
+    const reader = new NDEFReader();
+    await reader.scan();
+    reader.addEventListener('reading', ({serialNumber}) => {
+      const uid = serialNumber.toUpperCase().replace(/[:\s\-]/g,'');
+      document.getElementById('e-nfc').value = uid;
+      setStatus('ok','✓ UID leído: ' + uid);
+      btn.textContent='📡 Leer'; btn.disabled=false;
+    }, {once:true});
+  } catch(err) {
+    setStatus('error','Error NFC: '+err.message);
+    btn.textContent='📡 Leer'; btn.disabled=false;
+  }
+};
+
+window.closeEdit = function() {
+  document.getElementById('edit-modal').style.display = 'none';
+};
+
+window.saveEdit = async function() {
+  const docId  = document.getElementById('e-docid').value;
+  const oldUid = document.getElementById('e-uid').value;
+  const nombre = document.getElementById('e-nombre').value.trim();
+  const nfc    = document.getElementById('e-nfc').value.trim().toUpperCase().replace(/[:\s\-]/g,'');
+  const id     = document.getElementById('e-id').value.trim();
+  if (!nombre) { editFb('error','El nombre es obligatorio.'); return; }
+  const newUid = nfc || oldUid;
+  const sinNfc = !nfc;
+  try {
+    const data = {
+      uid: newUid, id, nombre, apellidos: '', email: '', telefono: '',
+      salaSidi:     document.getElementById('e-sidi').checked,
+      salaServei:   document.getElementById('e-servei').checked,
+      salaTalleres: document.getElementById('e-talleres').checked,
+      sinNfc,
+    };
+    // If UID changed, delete old doc and create new one
+    if (newUid !== oldUid) {
+      await deleteDoc(doc(db, 'asistentes', docId));
+      await setDoc(doc(colAst, newUid), data);
+    } else {
+      await setDoc(doc(db, 'asistentes', docId), data);
+    }
+    closeEdit();
+  } catch(e) { editFb('error','Error: '+e.message); }
+};
+
+function editFb(type, msg) {
+  const el = document.getElementById('edit-fb');
+  el.style.display='block';
+  el.style.background=type==='ok'?'var(--green-bg)':'var(--red-bg)';
+  el.style.border='1px solid '+(type==='ok'?'var(--green-border)':'var(--red-border)');
+  el.style.color=type==='ok'?'var(--green)':'var(--red)';
+  el.textContent=msg;
+}
+
 window.addManual = async function() {
   const uid    = document.getElementById('m-uid').value.trim().toUpperCase().replace(/[:\s\-]/g,'');
   const nombre = document.getElementById('m-nombre').value.trim();
-  const id     = document.getElementById('m-id').value.trim();
+  const id     = document.getElementById('m-id').value.trim() || getNextId();
   if (!nombre) { showFb('error','El nombre es obligatorio.'); return; }
   const key = uid || 'id_' + (id || Date.now());
   if (asistentes.find(a=>a.uid===key)) { showFb('error','Ya existe un asistente con ese UID o ID.'); return; }
   try {
     await setDoc(doc(colAst, key), {
-      uid: key, id: id || String(asistentes.length+1).padStart(4,'0'),
+      uid: key, id,
       nombre, apellidos: '', email: '', telefono: '',
       salaSidi:     document.getElementById('m-sidi').checked,
       salaServei:   document.getElementById('m-servei').checked,
