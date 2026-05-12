@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#00e57a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="NFC Access">
+<title>Control de Acceso NFC</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#0a0a0f;--surface:#13131a;--surface2:#1c1c27;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);--text:#f0f0f5;--text2:#8888a0;--text3:#55556a;--green:#00e57a;--green-bg:rgba(0,229,122,0.1);--green-border:rgba(0,229,122,0.25);--red:#ff4d6a;--red-bg:rgba(255,77,106,0.1);--red-border:rgba(255,77,106,0.25);--amber:#ffb347;--amber-bg:rgba(255,179,71,0.08);--blue:#4d9fff;--blue-bg:rgba(77,159,255,0.1);--radius:12px;--radius-sm:8px;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  .sync-bar{display:flex;align-items:center;justify-content:center;gap:8px;padding:8px 16px;font-size:11px;font-family:'DM Mono',monospace;}
+  .sync-bar.connecting{background:var(--amber-bg);color:var(--amber);}
+  .sync-bar.live{background:var(--green-bg);color:var(--green);}
+  .sync-bar.error{background:var(--red-bg);color:var(--red);}
+  .sync-dot{width:6px;height:6px;border-radius:50%;background:currentColor;}
+  .sync-dot.pulse{animation:sdot 1.2s ease-in-out infinite;}
+  @keyframes sdot{0%,100%{opacity:1}50%{opacity:.3}}
+  nav{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:50;}
+  .nav-logo{font-family:'DM Mono',monospace;font-size:13px;color:var(--text2);letter-spacing:.08em;}
+  .nav-logo span{color:var(--green);}
+  .nav-tabs{display:flex;gap:4px;background:var(--surface);border-radius:var(--radius-sm);padding:3px;}
+  .nav-tab{font-size:12px;font-weight:500;padding:6px 14px;border-radius:6px;border:none;background:transparent;color:var(--text2);cursor:pointer;}
+  .nav-tab.active{background:var(--surface2);color:var(--text);}
+  .view{display:none;padding:20px;max-width:600px;margin:0 auto;}
+  .view.active{display:block;}
+  .sala-lbl{font-size:11px;letter-spacing:.1em;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:8px;font-family:'DM Mono',monospace;}
+  .sala-btns{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;}
+  .sala-btn{padding:10px 18px;border-radius:var(--radius-sm);border:1px solid var(--border2);background:var(--surface);color:var(--text2);font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;}
+  .sala-btn.sel{border-color:var(--green);color:var(--green);background:var(--green-bg);}
+  .scanner-area{border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);padding:44px 24px;text-align:center;margin-bottom:18px;transition:border-color .3s,background .3s;}
+  .scanner-area.ok{border-color:var(--green);background:var(--green-bg);}
+  .scanner-area.deny{border-color:var(--red);background:var(--red-bg);}
+  .scan-ring{width:100px;height:100px;border-radius:50%;border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;margin:0 auto 22px;transition:all .3s;}
+  .scan-ring.pulse{animation:pr 1.5s ease-in-out infinite;border-color:var(--blue);}
+  .scan-ring.ok{border-color:var(--green);}
+  .scan-ring.deny{border-color:var(--red);}
+  @keyframes pr{0%,100%{box-shadow:0 0 0 0 rgba(77,159,255,.3)}50%{box-shadow:0 0 0 18px rgba(77,159,255,0)}}
+  .scan-icon{font-size:38px;line-height:1;}
+  .scan-title{font-size:20px;font-weight:600;margin-bottom:6px;}
+  .scan-sub{font-size:13px;color:var(--text2);}
+  .result-card{border-radius:var(--radius);padding:18px;margin-bottom:14px;border:1px solid;display:none;}
+  .result-card.show{display:block;}
+  .result-card.ok{background:var(--green-bg);border-color:var(--green-border);}
+  .result-card.deny{background:var(--red-bg);border-color:var(--red-border);}
+  .rbadge{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.08em;padding:3px 10px;border-radius:4px;font-family:'DM Mono',monospace;margin-bottom:10px;}
+  .rbadge.ok{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);}
+  .rbadge.deny{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border);}
+  .rname{font-size:20px;font-weight:600;margin-bottom:2px;}
+  .rmeta{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:12px;}
+  .acceso-single{border-radius:var(--radius-sm);padding:12px 16px;display:flex;align-items:center;gap:10px;font-size:15px;font-weight:500;}
+  .acceso-single.si{background:var(--green-bg);border:1px solid var(--green-border);color:var(--green);}
+  .acceso-single.no{background:var(--red-bg);border:1px solid var(--red-border);color:var(--red);}
+  .rdetail{font-size:13px;color:var(--text2);margin-top:10px;}
+  .btn-alta{width:100%;padding:10px;margin-top:10px;border-radius:var(--radius-sm);border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;}
+  .btn-alta:hover{border-color:var(--green);color:var(--green);}
+  .btn-scan{width:100%;padding:16px;border-radius:var(--radius);border:none;font-size:16px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
+  .btn-scan.ready{background:var(--green);color:#000;}
+  .btn-scan.scanning{background:var(--surface2);color:var(--text2);cursor:not-allowed;}
+  .nfc-warn{background:var(--amber-bg);border:1px solid rgba(255,179,71,.2);border-radius:var(--radius-sm);padding:12px 14px;font-size:12px;color:var(--amber);margin-bottom:14px;display:none;}
+  .nfc-warn.show{display:block;}
+  .sec-title{font-size:11px;letter-spacing:.1em;color:var(--text3);text-transform:uppercase;font-family:'DM Mono',monospace;margin-bottom:10px;}
+  .recent-list{display:flex;flex-direction:column;gap:8px;margin-top:14px;}
+  .ri{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:11px 14px;display:flex;align-items:center;gap:10px;}
+  .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+  .dot.ok{background:var(--green);}
+  .dot.deny{background:var(--red);}
+  .ri-name{font-size:13px;font-weight:500;}
+  .ri-info{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:1px;}
+  .stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;}
+  .stat-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;}
+  .stat-num{font-size:26px;font-weight:600;line-height:1;margin-bottom:4px;}
+  .stat-lbl{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;}
+  .log-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:8px;display:grid;grid-template-columns:8px 1fr auto;gap:10px;align-items:start;}
+  .log-name{font-size:13px;font-weight:500;}
+  .log-meta{font-size:11px;color:var(--text2);font-family:'DM Mono',monospace;margin-top:2px;}
+  .log-time{font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);text-align:right;white-space:nowrap;}
+  .empty-st{text-align:center;padding:48px 0;color:var(--text3);font-size:13px;}
+  .adm-sec{margin-bottom:28px;}
+  .adm-sec h3{font-size:11px;letter-spacing:.1em;color:var(--text3);text-transform:uppercase;font-family:'DM Mono',monospace;margin-bottom:12px;}
+  .tw{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{padding:10px 14px;text-align:left;font-size:10px;letter-spacing:.08em;color:var(--text3);font-weight:500;font-family:'DM Mono',monospace;border-bottom:1px solid var(--border);white-space:nowrap;}
+  td{padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+  .mono{font-family:'DM Mono',monospace;font-size:11px;color:var(--text2);}
+  .si-b{font-size:10px;padding:2px 7px;border-radius:4px;background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);font-family:'DM Mono',monospace;font-weight:600;}
+  .no-b{font-size:10px;padding:2px 7px;border-radius:4px;background:var(--red-bg);color:var(--red);border:1px solid var(--red-border);font-family:'DM Mono',monospace;font-weight:600;}
+  .drop-zone{background:var(--surface);border:1px dashed var(--border2);border-radius:var(--radius);padding:26px;text-align:center;cursor:pointer;margin-bottom:10px;}
+  .drop-zone:hover{border-color:var(--blue);}
+  .imp-fb{display:none;border-radius:var(--radius-sm);padding:12px 14px;font-size:13px;margin-bottom:10px;}
+  .fmt-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;}
+  .form-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
+  .form-input{flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:10px 12px;color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;}
+  .form-input:focus{border-color:var(--blue);}
+  .form-input::placeholder{color:var(--text3);}
+  .form-check{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2);cursor:pointer;padding:4px 0;}
+  .form-check input{accent-color:var(--green);width:16px;height:16px;}
+  .btn-add{padding:10px 16px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;}
+  .btn-add:hover{border-color:var(--green);color:var(--green);}
+  .btn-del-row{background:none;border:none;color:var(--text3);cursor:pointer;font-size:15px;padding:2px 6px;border-radius:4px;}
+  .btn-del-row:hover{color:var(--red);background:var(--red-bg);}
+  .exp-btn{width:100%;padding:11px;border-radius:var(--radius-sm);border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:10px;}
+  .exp-btn:hover{border-color:var(--blue);color:var(--blue);}
+  .del-btn{border-color:rgba(255,77,106,.2);color:var(--red);}
+  .del-btn:hover{border-color:var(--red);}
+  .manual-form{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:10px;}
+  .mft{font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:12px;text-transform:uppercase;letter-spacing:.08em;}
+  .checks-row{display:flex;gap:12px;flex-wrap:wrap;margin:8px 0 12px;}
+  .loading-overlay{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:100;}
+  .loading-overlay.hidden{display:none;}
+  .spinner{width:36px;height:36px;border:2px solid var(--border2);border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .uid-status{font-size:12px;font-family:'DM Mono',monospace;padding:8px 12px;border-radius:var(--radius-sm);margin-bottom:8px;display:none;}
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loading">
+  <div class="spinner"></div>
+  <div style="font-size:13px;color:var(--text2);font-family:'DM Mono',monospace;">Conectando…</div>
+</div>
+
+<div class="sync-bar connecting" id="sync-bar">
+  <div class="sync-dot pulse" id="sync-dot"></div>
+  <span id="sync-txt">Conectando…</span>
+</div>
+
+<nav>
+  <div class="nav-logo">NFC<span>·</span>ACCESS</div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showView('lector',this)">Lector</button>
+    <button class="nav-tab" onclick="showView('registro',this)">Registro</button>
+    <button class="nav-tab" onclick="showView('admin',this)">Admin</button>
+  </div>
+</nav>
+
+<!-- LECTOR -->
+<div id="view-lector" class="view active">
+  <span class="sala-lbl">Sala activa</span>
+  <div class="sala-btns">
+    <button class="sala-btn sel" id="btn-servei"  onclick="selectSala('servei')">Sala Plenaria SERVEI</button>
+    <button class="sala-btn"    id="btn-sidi"     onclick="selectSala('sidi')">Sala Plenaria SIDI</button>
+    <button class="sala-btn"    id="btn-talleres" onclick="selectSala('talleres')">Talleres</button>
+  </div>
+  <div class="nfc-warn" id="nfc-warn"></div>
+  <div class="scanner-area" id="scan-area">
+    <div class="scan-ring" id="scan-ring"><div class="scan-icon" id="scan-icon">📡</div></div>
+    <div class="scan-title" id="scan-title">Listo para escanear</div>
+    <div class="scan-sub"   id="scan-sub">Acerca la tarjeta NFC al teléfono</div>
+  </div>
+  <div class="result-card" id="result-card">
+    <span class="rbadge" id="rbadge"></span>
+    <div class="rname"   id="rname"></div>
+    <div class="rmeta"   id="rmeta"></div>
+    <div id="acceso-wrap"></div>
+    <div class="rdetail" id="rdetail"></div>
+  </div>
+  <button class="btn-scan ready" id="btn-scan" onclick="startScan()">Escanear tarjeta NFC</button>
+  <div style="margin-top:28px;">
+    <div class="sec-title">Últimas lecturas</div>
+    <div class="recent-list" id="recent-list"></div>
+  </div>
+</div>
+
+<!-- REGISTRO -->
+<div id="view-registro" class="view">
+  <div class="stats-row">
+    <div class="stat-box"><div class="stat-num" id="s-total">—</div><div class="stat-lbl">LECTURAS</div></div>
+    <div class="stat-box"><div class="stat-num" style="color:var(--green)" id="s-ok">—</div><div class="stat-lbl">ACCESOS OK</div></div>
+    <div class="stat-box"><div class="stat-num" style="color:var(--red)" id="s-deny">—</div><div class="stat-lbl">DENEGADOS</div></div>
+  </div>
+  <div class="sec-title">Historial completo</div>
+  <div id="log-list"><div class="empty-st">Sin registros todavía.</div></div>
+  <button class="exp-btn" onclick="exportCSV()">Exportar registro como CSV</button>
+  <button class="exp-btn del-btn" onclick="clearRegistros()">Borrar historial</button>
+</div>
+
+<!-- ADMIN -->
+<div id="view-admin" class="view">
+  <div class="adm-sec">
+    <h3>Importar asistentes desde CSV</h3>
+    <div class="drop-zone" onclick="document.getElementById('csv-input').click()">
+      <div style="font-size:28px;margin-bottom:10px;">📄</div>
+      <div style="font-size:14px;font-weight:500;color:var(--text);margin-bottom:4px;">Selecciona el CSV</div>
+      <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">Compatible con Excel y Google Sheets · Separador , o ;</div>
+      <input type="file" id="csv-input" accept=".csv,.txt" style="display:none" onchange="importCSV(this)">
+    </div>
+    <div class="imp-fb" id="imp-fb"></div>
+    <div class="fmt-box">
+      <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:6px;">COLUMNAS ESPERADAS</div>
+      <div style="font-size:12px;color:var(--text2);font-family:'DM Mono',monospace;line-height:2;">
+        uid · id · nombre · apellidos · email · telefono<br>
+        salaplenariaservei &nbsp;<span style="color:var(--green)">SI</span>/<span style="color:var(--red)">NO</span> &nbsp;·&nbsp;
+        salaplenariasidi &nbsp;<span style="color:var(--green)">SI</span>/<span style="color:var(--red)">NO</span> &nbsp;·&nbsp;
+        talleres &nbsp;<span style="color:var(--green)">SI</span>/<span style="color:var(--red)">NO</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="adm-sec">
+    <h3>Alta manual de asistente</h3>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:12px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);">
+      💡 Para leer una tarjeta nueva: ve al <strong>Lector</strong>, escanea la tarjeta y pulsa <strong>"+ Dar de alta"</strong> — el UID se cargará aquí automáticamente.
+    </div>
+    <div class="manual-form">
+      <div class="mft">Datos del asistente</div>
+      <div class="form-row">
+        <input class="form-input" id="m-uid" placeholder="UID NFC (obligatorio)">
+        <input class="form-input" id="m-id"  placeholder="ID interno">
+      </div>
+      <div id="uid-status" class="uid-status"></div>
+      <div class="form-row">
+        <input class="form-input" id="m-nombre"    placeholder="Nombre (obligatorio)">
+        <input class="form-input" id="m-apellidos" placeholder="Apellidos">
+      </div>
+      <div class="form-row">
+        <input class="form-input" id="m-email"    placeholder="Email">
+        <input class="form-input" id="m-telefono" placeholder="Teléfono">
+      </div>
+      <div class="checks-row">
+        <label class="form-check"><input type="checkbox" id="m-servei"   checked> Sala Plenaria SERVEI</label>
+        <label class="form-check"><input type="checkbox" id="m-sidi"     checked> Sala Plenaria SIDI</label>
+        <label class="form-check"><input type="checkbox" id="m-talleres" checked> Talleres</label>
+      </div>
+      <button class="btn-add" style="width:100%;padding:12px;" onclick="addManual()">+ Añadir asistente</button>
+    </div>
+  </div>
+
+  <div class="adm-sec">
+    <h3>Asistentes cargados <span id="ast-count" style="color:var(--text3);font-weight:400;"></span></h3>
+    <div class="tw">
+      <table>
+        <thead><tr><th>ID</th><th>Nombre</th><th>UID NFC</th><th>SERVEI</th><th>SIDI</th><th>Talleres</th><th></th></tr></thead>
+        <tbody id="ast-tbody"><tr><td colspan="7" style="color:var(--text3);text-align:center;padding:24px;font-size:12px;">Cargando…</td></tr></tbody>
+      </table>
+    </div>
+    <button class="exp-btn del-btn" onclick="clearAst()">Borrar todos los asistentes</button>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp }   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, collection, doc, setDoc,
+         deleteDoc, onSnapshot, addDoc, query, orderBy,
+         writeBatch, getDocs, serverTimestamp }
+                           from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey:            "AIzaSyDJJxuxk4hLrQ3X2zWfvGi4y5v3KiuIBJY",
+  authDomain:        "nfc-acceso.firebaseapp.com",
+  projectId:         "nfc-acceso",
+  storageBucket:     "nfc-acceso.firebasestorage.app",
+  messagingSenderId: "54196258743",
+  appId:             "1:54196258743:web:ec2cb759095dc21b9a4a32"
+};
+
+const app    = initializeApp(firebaseConfig);
+const db     = getFirestore(app);
+const colAst = collection(db, 'asistentes');
+const colReg = collection(db, 'registros');
+
+let asistentes = [], registros = [], salaActiva = 'servei', scanning = false;
+
+function setSyncStatus(state, msg) {
+  document.getElementById('sync-bar').className = 'sync-bar ' + state;
+  document.getElementById('sync-dot').className = 'sync-dot' + (state === 'connecting' ? ' pulse' : '');
+  document.getElementById('sync-txt').textContent = msg;
+}
+
+onSnapshot(colAst, snap => {
+  asistentes = snap.docs.map(d => ({...d.data(), _docId: d.id}));
+  renderAstTable();
+  renderRecent();
+}, err => {
+  setSyncStatus('error', 'Error: ' + err.code);
+  document.getElementById('loading').classList.add('hidden');
+});
+
+const qReg = query(colReg, orderBy('ts', 'desc'));
+onSnapshot(qReg, snap => {
+  registros = snap.docs.map(d => ({...d.data(), _docId: d.id}));
+  renderRecent();
+  renderLog();
+  document.getElementById('loading').classList.add('hidden');
+  setSyncStatus('live', 'Sincronizado en tiempo real');
+}, err => {
+  setSyncStatus('error', 'Error: ' + err.code);
+  document.getElementById('loading').classList.add('hidden');
+});
+
+function puedeAcceder(a) {
+  return salaActiva === 'servei' ? a.salaServei : salaActiva === 'sidi' ? a.salaSidi : a.salaTalleres;
+}
+
+async function procesarLectura(raw) {
+  const uid  = raw.toUpperCase().replace(/[:\s\-]/g, '');
+  const a    = asistentes.find(x => x.uid === uid);
+  const hora = new Date();
+  const horaStr  = hora.toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  const fechaStr = hora.toLocaleDateString('es-ES');
+  const sala = salaActiva === 'servei' ? 'Sala Plenaria SERVEI' : salaActiva === 'sidi' ? 'Sala Plenaria SIDI' : 'Talleres';
+  if (!a) { showUnknown(uid, horaStr, sala); return; }
+  const ok = puedeAcceder(a);
+  try { await addDoc(colReg, {uid, sala, ok, horaStr, fechaStr, aId: a.uid, nombre: a.nombre, apellidos: a.apellidos, ts: serverTimestamp()}); } catch(e) { console.error(e); }
+  showResult(a, ok, horaStr, sala);
+}
+
+function showResult(a, ok, horaStr, sala) {
+  const cl = ok ? 'ok' : 'deny';
+  document.getElementById('scan-area').className  = 'scanner-area ' + cl;
+  document.getElementById('scan-ring').className  = 'scan-ring ' + cl;
+  document.getElementById('scan-icon').textContent  = ok ? '✓' : '✕';
+  document.getElementById('scan-title').textContent = ok ? 'Acceso permitido' : 'Acceso denegado';
+  document.getElementById('scan-sub').textContent   = sala + ' · ' + horaStr;
+  document.getElementById('result-card').className  = 'result-card show ' + cl;
+  document.getElementById('rbadge').textContent = ok ? 'ACCESO OK' : 'DENEGADO';
+  document.getElementById('rbadge').className   = 'rbadge ' + cl;
+  document.getElementById('rname').textContent  = a.nombre + ' ' + a.apellidos;
+  document.getElementById('rmeta').textContent  = 'ID ' + a.id + (a.email ? ' · ' + a.email : '');
+  document.getElementById('acceso-wrap').innerHTML =
+    '<div class="acceso-single ' + (ok?'si':'no') + '"><span style="font-size:20px;">' + (ok?'✓':'✕') + '</span>' + sala + '</div>';
+  document.getElementById('rdetail').textContent = ok
+    ? 'Entrada registrada a las ' + horaStr + '.'
+    : 'Sin permiso para ' + sala + '.';
+  setTimeout(resetScanner, 5000);
+}
+
+function showUnknown(uid, horaStr, sala) {
+  document.getElementById('scan-area').className  = 'scanner-area deny';
+  document.getElementById('scan-ring').className  = 'scan-ring deny';
+  document.getElementById('scan-icon').textContent  = '⚠';
+  document.getElementById('scan-title').textContent = 'Tarjeta no registrada';
+  document.getElementById('scan-sub').textContent   = 'UID: ' + uid;
+  document.getElementById('result-card').className  = 'result-card show deny';
+  document.getElementById('rbadge').textContent = 'DESCONOCIDO';
+  document.getElementById('rbadge').className   = 'rbadge deny';
+  document.getElementById('rname').textContent  = 'Tarjeta no encontrada';
+  document.getElementById('rmeta').textContent  = uid;
+  document.getElementById('acceso-wrap').innerHTML =
+    '<button class="btn-alta" onclick="irAltaConUID(\'' + uid + '\')">+ Dar de alta este asistente</button>';
+  document.getElementById('rdetail').textContent = 'Pulsa el botón para registrar este asistente.';
+  setTimeout(resetScanner, 10000);
+}
+
+window.irAltaConUID = function(uid) {
+  resetScanner();
+  document.getElementById('m-uid').value = uid;
+  const st = document.getElementById('uid-status');
+  st.style.display = 'block';
+  st.style.background = 'var(--green-bg)';
+  st.style.border = '1px solid var(--green-border)';
+  st.style.color = 'var(--green)';
+  st.textContent = '✓ UID cargado desde tarjeta: ' + uid;
+  document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('view-admin').classList.add('active');
+  document.querySelectorAll('.nav-tab')[2].classList.add('active');
+  setTimeout(() => document.getElementById('m-nombre').focus(), 300);
+};
+
+function resetScanner() {
+  document.getElementById('scan-area').className  = 'scanner-area';
+  document.getElementById('scan-ring').className  = 'scan-ring';
+  document.getElementById('scan-icon').textContent  = '📡';
+  document.getElementById('scan-title').textContent = 'Listo para escanear';
+  document.getElementById('scan-sub').textContent   = 'Acerca la tarjeta NFC al teléfono';
+  document.getElementById('result-card').className  = 'result-card';
+  document.getElementById('btn-scan').className     = 'btn-scan ready';
+  document.getElementById('btn-scan').textContent   = 'Escanear tarjeta NFC';
+  scanning = false;
+}
+
+window.startScan = async function() {
+  if (scanning) return;
+  scanning = true;
+  document.getElementById('btn-scan').className   = 'btn-scan scanning';
+  document.getElementById('btn-scan').textContent = 'Esperando tarjeta…';
+  document.getElementById('scan-ring').classList.add('pulse');
+  document.getElementById('scan-title').textContent = 'Acerca la tarjeta';
+  document.getElementById('scan-sub').textContent   = 'Mantén la tarjeta cerca del teléfono';
+  if ('NDEFReader' in window) {
+    try {
+      const reader = new NDEFReader();
+      await reader.scan();
+      reader.addEventListener('reading', ({serialNumber}) => {
+        document.getElementById('scan-ring').classList.remove('pulse');
+        scanning = false;
+        procesarLectura(serialNumber);
+      }, {once: true});
+      return;
+    } catch(err) {
+      document.getElementById('nfc-warn').textContent = 'Error NFC: ' + err.message;
+      document.getElementById('nfc-warn').classList.add('show');
+    }
+  } else {
+    document.getElementById('nfc-warn').textContent = 'Web NFC no disponible. Usa Chrome en Android con NFC activo.';
+    document.getElementById('nfc-warn').classList.add('show');
+  }
+  document.getElementById('scan-ring').classList.remove('pulse');
+  scanning = false;
+  resetScanner();
+  const lista = asistentes.length ? asistentes.slice(0,5).map(a => a.uid + '  →  ' + a.nombre).join('\n') : '(sin asistentes)';
+  const uid = prompt('MODO SIMULACIÓN\nIntroduce el UID:\n\n' + lista);
+  if (uid && uid.trim()) procesarLectura(uid.trim());
+};
+
+window.selectSala = function(s) {
+  salaActiva = s;
+  document.getElementById('btn-servei').className  = 'sala-btn' + (s==='servei'   ? ' sel' : '');
+  document.getElementById('btn-sidi').className    = 'sala-btn' + (s==='sidi'     ? ' sel' : '');
+  document.getElementById('btn-talleres').className = 'sala-btn' + (s==='talleres' ? ' sel' : '');
+  resetScanner();
+};
+
+function renderRecent() {
+  document.getElementById('recent-list').innerHTML = registros.slice(0,6).map(r =>
+    '<div class="ri"><div class="dot ' + (r.ok?'ok':'deny') + '"></div>' +
+    '<div style="flex:1;min-width:0;"><div class="ri-name">' + (r.nombre?r.nombre+' '+r.apellidos:'Desconocido') + '</div>' +
+    '<div class="ri-info">' + r.sala + ' · ' + r.horaStr + '</div></div>' +
+    '<div style="font-size:11px;color:' + (r.ok?'var(--green)':'var(--red)') + ';">' + (r.ok?'✓':'✕') + '</div></div>'
+  ).join('');
+}
+
+function renderLog() {
+  const list = document.getElementById('log-list');
+  list.innerHTML = registros.length
+    ? registros.map(r =>
+        '<div class="log-item"><div class="dot ' + (r.ok?'ok':'deny') + '" style="margin-top:3px;"></div>' +
+        '<div><div class="log-name">' + (r.nombre?r.nombre+' '+r.apellidos:'Desconocido · '+r.uid) + '</div>' +
+        '<div class="log-meta">' + r.sala + (r.aId?' · '+r.uid:'') + '</div></div>' +
+        '<div class="log-time">' + r.horaStr + '<br><span style="color:var(--text3)">' + r.fechaStr + '</span></div></div>'
+      ).join('')
+    : '<div class="empty-st">Sin registros todavía.</div>';
+  const total = registros.length, ok = registros.filter(r=>r.ok).length;
+  document.getElementById('s-total').textContent = total;
+  document.getElementById('s-ok').textContent    = ok;
+  document.getElementById('s-deny').textContent  = total - ok;
+}
+
+function renderAstTable() {
+  document.getElementById('ast-count').textContent = asistentes.length ? '('+asistentes.length+')' : '';
+  document.getElementById('ast-tbody').innerHTML = asistentes.length
+    ? asistentes.map(a =>
+        '<tr><td class="mono">' + (a.id||'') + '</td>' +
+        '<td>' + (a.nombre||'') + ' ' + (a.apellidos||'') + '</td>' +
+        '<td class="mono">' + a.uid + '</td>' +
+        '<td><span class="' + (a.salaServei  ?'si-b':'no-b') + '">' + (a.salaServei  ?'SI':'NO') + '</span></td>' +
+        '<td><span class="' + (a.salaSidi    ?'si-b':'no-b') + '">' + (a.salaSidi    ?'SI':'NO') + '</span></td>' +
+        '<td><span class="' + (a.salaTalleres?'si-b':'no-b') + '">' + (a.salaTalleres?'SI':'NO') + '</span></td>' +
+        '<td><button class="btn-del-row" onclick="deleteAst(\'' + a._docId + '\')">×</button></td></tr>'
+      ).join('')
+    : '<tr><td colspan="7" style="color:var(--text3);text-align:center;padding:24px;font-size:12px;">Sin asistentes.</td></tr>';
+}
+
+window.addManual = async function() {
+  const uid    = document.getElementById('m-uid').value.trim().toUpperCase().replace(/[:\s\-]/g, '');
+  const nombre = document.getElementById('m-nombre').value.trim();
+  if (!uid)    { showFb('error', 'El UID NFC es obligatorio.'); return; }
+  if (!nombre) { showFb('error', 'El nombre es obligatorio.'); return; }
+  if (asistentes.find(a => a.uid === uid)) { showFb('error', 'Ya existe un asistente con ese UID.'); return; }
+  try {
+    await setDoc(doc(colAst, uid), {
+      uid,
+      id:           document.getElementById('m-id').value.trim() || String(Date.now()),
+      nombre,
+      apellidos:    document.getElementById('m-apellidos').value.trim(),
+      email:        document.getElementById('m-email').value.trim(),
+      telefono:     document.getElementById('m-telefono').value.trim(),
+      salaServei:   document.getElementById('m-servei').checked,
+      salaSidi:     document.getElementById('m-sidi').checked,
+      salaTalleres: document.getElementById('m-talleres').checked,
+    });
+    ['m-uid','m-id','m-nombre','m-apellidos','m-email','m-telefono'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('m-servei').checked   = true;
+    document.getElementById('m-sidi').checked     = true;
+    document.getElementById('m-talleres').checked = true;
+    document.getElementById('uid-status').style.display = 'none';
+    showFb('ok', '✓ Asistente añadido y sincronizado.');
+  } catch(e) { showFb('error', 'Error: ' + e.message); }
+};
+
+window.deleteAst = async function(docId) {
+  if (!confirm('¿Eliminar este asistente?')) return;
+  try { await deleteDoc(doc(db, 'asistentes', docId)); } catch(e) { alert('Error: ' + e.message); }
+};
+
+window.clearAst = async function() {
+  if (!confirm('¿Borrar TODOS los asistentes?')) return;
+  const snap = await getDocs(colAst);
+  const b = writeBatch(db); snap.docs.forEach(d => b.delete(d.ref)); await b.commit();
+};
+
+window.clearRegistros = async function() {
+  if (!confirm('¿Borrar todo el historial?')) return;
+  const snap = await getDocs(colReg);
+  const b = writeBatch(db); snap.docs.forEach(d => b.delete(d.ref)); await b.commit();
+};
+
+function detectSep(lines) {
+  const s = lines.slice(0,3).join('\n');
+  return (s.match(/;/g)||[]).length > (s.match(/,/g)||[]).length ? ';' : ',';
+}
+
+function parseLine(l, sep) {
+  const r = []; let c = '', q = false;
+  for (let i = 0; i < l.length; i++) {
+    const ch = l[i];
+    if (ch === '"') { q = !q; continue; }
+    if (ch === sep && !q) { r.push(c.trim()); c = ''; continue; }
+    c += ch;
+  }
+  r.push(c.trim()); return r;
+}
+
+function norm(s) {
+  return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
+}
+
+window.importCSV = async function(input) {
+  const file = input.files[0]; if (!file) return;
+  const fr = new FileReader();
+  fr.onload = async function(e) {
+    const raw   = e.target.result.replace(/^\uFEFF/,'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+    const lines = raw.trim().split('\n').filter(l => l.trim());
+    if (lines.length < 2) { showFb('error', 'Archivo vacío.'); return; }
+    const sep    = detectSep(lines);
+    const header = parseLine(lines[0], sep).map(norm);
+    const fi = {
+      uid:      header.findIndex(h => h === 'uid'),
+      id:       header.findIndex(h => h === 'id'),
+      nombre:   header.findIndex(h => h === 'nombre'),
+      apellidos:header.findIndex(h => h === 'apellidos' || h === 'apellido'),
+      email:    header.findIndex(h => h === 'email'),
+      telefono: header.findIndex(h => h === 'telefono' || h === 'tlf' || h === 'phone'),
+      servei:   header.findIndex(h => h.includes('servei')),
+      sidi:     header.findIndex(h => h.includes('sidi')),
+      talleres: header.findIndex(h => h.includes('taller')),
+    };
+    if (fi.uid < 0)     { showFb('error', 'Columna UID no encontrada. Cabeceras: ' + header.join(', ')); return; }
+    if (fi.nombre < 0)  { showFb('error', 'Columna nombre no encontrada.'); return; }
+    if (fi.servei < 0)  { showFb('error', 'Columna salaplenariaservei no encontrada. Cabeceras: ' + header.join(', ')); return; }
+    if (fi.sidi < 0)    { showFb('error', 'Columna salaplenariasidi no encontrada. Cabeceras: ' + header.join(', ')); return; }
+    if (fi.talleres < 0){ showFb('error', 'Columna talleres no encontrada. Cabeceras: ' + header.join(', ')); return; }
+    const siNo = v => {
+      const s = (v||'').toString().trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      return ['SI','S','1','TRUE','VERDADERO','YES'].includes(s);
+    };
+    let imp = 0, act = 0, omit = 0;
+    const filas = [];
+    lines.slice(1).forEach((line, i) => {
+      const c   = parseLine(line, sep);
+      const uid = (c[fi.uid]||'').toUpperCase().replace(/[:\s\-]/g,'');
+      if (!uid) { omit++; return; }
+      const yaExiste = asistentes.find(a => a.uid === uid);
+      filas.push({
+        uid,
+        id:           fi.id >= 0        ? String(c[fi.id]||'').trim()        : String(i+1),
+        nombre:       fi.nombre >= 0    ? String(c[fi.nombre]||'').trim()    : '',
+        apellidos:    fi.apellidos >= 0  ? String(c[fi.apellidos]||'').trim() : '',
+        email:        fi.email >= 0     ? String(c[fi.email]||'').trim()     : '',
+        telefono:     fi.telefono >= 0   ? String(c[fi.telefono]||'').trim()  : '',
+        salaServei:   siNo(c[fi.servei]),
+        salaSidi:     siNo(c[fi.sidi]),
+        salaTalleres: siNo(c[fi.talleres]),
+      });
+      if (yaExiste) act++; else imp++;
+    });
+    for (let i = 0; i < filas.length; i += 500) {
+      const b = writeBatch(db);
+      filas.slice(i, i+500).forEach(a => b.set(doc(colAst, a.uid), a));
+      await b.commit();
+    }
+    input.value = '';
+    const total = imp + act;
+    if (total > 0) {
+      let msg = '✓ ' + total + ' asistentes procesados';
+      if (imp > 0 && act > 0) msg += ' (' + imp + ' nuevos, ' + act + ' actualizados)';
+      else if (imp > 0)       msg += ' (' + imp + ' nuevos)';
+      else                    msg += ' (' + act + ' actualizados)';
+      if (omit > 0) msg += '. ' + omit + ' filas sin UID omitidas.';
+      showFb('ok', msg);
+    } else {
+      showFb('error', 'No se procesó ningún asistente. Cabeceras: ' + header.join(', '));
+    }
+  };
+  fr.readAsText(file, 'UTF-8');
+};
+
+window.exportCSV = function() {
+  if (!registros.length) { alert('No hay registros todavía.'); return; }
+  const rows = [['Nombre','Apellidos','UID','Sala','Acceso','Hora','Fecha']];
+  registros.forEach(r => rows.push([r.nombre||'Desconocido', r.apellidos||'', r.uid, r.sala, r.ok?'OK':'DENEGADO', r.horaStr, r.fechaStr]));
+  const csv  = rows.map(r => r.map(v => '"' + String(v).replace(/"/g,'""') + '"').join(',')).join('\n');
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'});
+  const a    = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'registro-asistencia.csv'; a.click();
+};
+
+window.showView = function(v, btn) {
+  document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('view-' + v).classList.add('active');
+  btn.classList.add('active');
+  if (v === 'registro') renderLog();
+  if (v === 'admin')    renderAstTable();
+};
+
+function showFb(type, msg) {
+  const el = document.getElementById('imp-fb');
+  el.style.display    = 'block';
+  el.style.background = type==='ok' ? 'var(--green-bg)' : 'var(--red-bg)';
+  el.style.border     = '1px solid ' + (type==='ok' ? 'var(--green-border)' : 'var(--red-border)');
+  el.style.color      = type==='ok' ? 'var(--green)' : 'var(--red)';
+  el.textContent      = msg;
+  setTimeout(() => el.style.display = 'none', 7000);
+}
+</script>
+</body>
+</html>
