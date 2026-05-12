@@ -11,6 +11,8 @@
 <meta name="apple-mobile-web-app-title" content="NFC Access">
 <title>Control de Acceso NFC</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://apis.google.com/js/api.js" async defer></script>
 <style>
   :root{--bg:#0a0a0f;--surface:#13131a;--surface2:#1c1c27;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);--text:#f0f0f5;--text2:#8888a0;--text3:#55556a;--green:#00e57a;--green-bg:rgba(0,229,122,0.1);--green-border:rgba(0,229,122,0.25);--red:#ff4d6a;--red-bg:rgba(255,77,106,0.1);--red-border:rgba(255,77,106,0.25);--amber:#ffb347;--amber-bg:rgba(255,179,71,0.08);--blue:#4d9fff;--blue-bg:rgba(77,159,255,0.1);--radius:12px;--radius-sm:8px;}
   *{box-sizing:border-box;margin:0;padding:0;}
@@ -37,6 +39,7 @@
   .scanner-area{border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);padding:44px 24px;text-align:center;margin-bottom:18px;transition:border-color .3s,background .3s;}
   .scanner-area.ok{border-color:var(--green);background:var(--green-bg);}
   .scanner-area.deny{border-color:var(--red);background:var(--red-bg);}
+  .scanner-area.ready{border-color:var(--blue);background:var(--blue-bg);}
   .scan-ring{width:100px;height:100px;border-radius:50%;border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;margin:0 auto 22px;transition:all .3s;}
   .scan-ring.pulse{animation:pr 1.5s ease-in-out infinite;border-color:var(--blue);}
   .scan-ring.ok{border-color:var(--green);}
@@ -60,9 +63,8 @@
   .rdetail{font-size:13px;color:var(--text2);margin-top:10px;}
   .btn-alta{width:100%;padding:10px;margin-top:10px;border-radius:var(--radius-sm);border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;}
   .btn-alta:hover{border-color:var(--green);color:var(--green);}
-  .btn-scan{width:100%;padding:16px;border-radius:var(--radius);border:none;font-size:16px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
-  .btn-scan.ready{background:var(--green);color:#000;}
-  .btn-scan.scanning{background:var(--surface2);color:var(--text2);cursor:not-allowed;}
+  .nfc-status-bar{display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:var(--radius-sm);font-size:12px;font-family:'DM Mono',monospace;margin-bottom:14px;background:var(--blue-bg);border:1px solid rgba(77,159,255,.3);color:var(--blue);}
+  .nfc-status-dot{width:8px;height:8px;border-radius:50%;background:var(--blue);animation:sdot 1s ease-in-out infinite;}
   .nfc-warn{background:var(--amber-bg);border:1px solid rgba(255,179,71,.2);border-radius:var(--radius-sm);padding:12px 14px;font-size:12px;color:var(--amber);margin-bottom:14px;display:none;}
   .nfc-warn.show{display:block;}
   .sec-title{font-size:11px;letter-spacing:.1em;color:var(--text3);text-transform:uppercase;font-family:'DM Mono',monospace;margin-bottom:10px;}
@@ -92,10 +94,7 @@
   .mono{font-family:'DM Mono',monospace;font-size:11px;color:var(--text2);}
   .si-b{font-size:10px;padding:2px 7px;border-radius:4px;background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);font-family:'DM Mono',monospace;font-weight:600;}
   .no-b{font-size:10px;padding:2px 7px;border-radius:4px;background:var(--red-bg);color:var(--red);border:1px solid var(--red-border);font-family:'DM Mono',monospace;font-weight:600;}
-  .drop-zone{background:var(--surface);border:1px dashed var(--border2);border-radius:var(--radius);padding:26px;text-align:center;cursor:pointer;margin-bottom:10px;}
-  .drop-zone:hover{border-color:var(--blue);}
   .imp-fb{display:none;border-radius:var(--radius-sm);padding:12px 14px;font-size:13px;margin-bottom:10px;}
-  .fmt-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;}
   .form-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
   .form-input{flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:10px 12px;color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;}
   .form-input:focus{border-color:var(--blue);}
@@ -118,6 +117,9 @@
   .spinner{width:36px;height:36px;border:2px solid var(--border2);border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite;}
   @keyframes spin{to{transform:rotate(360deg)}}
   .uid-status{font-size:12px;font-family:'DM Mono',monospace;padding:8px 12px;border-radius:var(--radius-sm);margin-bottom:8px;display:none;}
+  .sheets-btn{width:100%;padding:12px;border-radius:var(--radius-sm);border:1px solid rgba(66,133,244,.4);background:rgba(66,133,244,.08);color:#4285f4;font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;}
+  .sheets-btn:hover{background:rgba(66,133,244,.15);}
+  .sheets-fb{display:none;border-radius:var(--radius-sm);padding:12px 14px;font-size:13px;margin-bottom:10px;}
 </style>
 </head>
 <body>
@@ -150,10 +152,14 @@
     <button class="sala-btn"    id="btn-talleres" onclick="selectSala('talleres')">Talleres</button>
   </div>
   <div class="nfc-warn" id="nfc-warn"></div>
-  <div class="scanner-area" id="scan-area">
-    <div class="scan-ring" id="scan-ring"><div class="scan-icon" id="scan-icon">📡</div></div>
+  <div id="nfc-status-bar" class="nfc-status-bar" style="display:none;">
+    <div class="nfc-status-dot"></div>
+    <span>Lector NFC activo — acerca una tarjeta</span>
+  </div>
+  <div class="scanner-area ready" id="scan-area">
+    <div class="scan-ring pulse" id="scan-ring"><div class="scan-icon" id="scan-icon">📡</div></div>
     <div class="scan-title" id="scan-title">Listo para escanear</div>
-    <div class="scan-sub"   id="scan-sub">Acerca la tarjeta NFC al teléfono</div>
+    <div class="scan-sub" id="scan-sub">Acerca la tarjeta NFC al teléfono</div>
   </div>
   <div class="result-card" id="result-card">
     <span class="rbadge" id="rbadge"></span>
@@ -162,7 +168,6 @@
     <div id="acceso-wrap"></div>
     <div class="rdetail" id="rdetail"></div>
   </div>
-  <button class="btn-scan ready" id="btn-scan" onclick="startScan()">Escanear tarjeta NFC</button>
   <div style="margin-top:28px;">
     <div class="sec-title">Últimas lecturas</div>
     <div class="recent-list" id="recent-list"></div>
@@ -184,65 +189,57 @@
 
 <!-- ADMIN -->
 <div id="view-admin" class="view">
+
   <div class="adm-sec">
-    <h3>Importar asistentes desde CSV</h3>
-    <div class="drop-zone" onclick="document.getElementById('csv-input').click()">
-      <div style="font-size:28px;margin-bottom:10px;">📄</div>
-      <div style="font-size:14px;font-weight:500;color:var(--text);margin-bottom:4px;">Selecciona el CSV</div>
-      <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">Compatible con Excel y Google Sheets · Separador , o ;</div>
-      <input type="file" id="csv-input" accept=".csv,.txt" style="display:none" onchange="importCSV(this)">
-    </div>
-    <div class="imp-fb" id="imp-fb"></div>
-    <div class="fmt-box">
-      <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:6px;">COLUMNAS ESPERADAS</div>
-      <div style="font-size:12px;color:var(--text2);font-family:'DM Mono',monospace;line-height:2;">
-        uid · id · nombre · apellidos · email · telefono<br>
-        salaplenariaservei &nbsp;<span style="color:var(--green)">SI</span>/<span style="color:var(--red)">NO</span> &nbsp;·&nbsp;
-        salaplenariasidi &nbsp;<span style="color:var(--green)">SI</span>/<span style="color:var(--red)">NO</span> &nbsp;·&nbsp;
-        talleres &nbsp;<span style="color:var(--green)">SI</span>/<span style="color:var(--red)">NO</span>
-      </div>
+    <h3>Google Sheets — Asistentes Congreso</h3>
+    <button class="sheets-btn" onclick="syncFromSheets()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="#4285f4" stroke-width="1.5"/><path d="M14 2v6h6M8 13h8M8 17h5" stroke="#4285f4" stroke-width="1.5" stroke-linecap="round"/></svg>
+      Sincronizar desde Google Sheets
+    </button>
+    <div class="sheets-fb" id="sheets-fb"></div>
+    <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;padding:8px 0;">
+      Hoja: ASISTENTES CONGRESO SIDI-SERVEI → pestaña "acceso salas" · ID 1ODbwwWMh4EBb3Kkzr-9ZIORjIc5_L3GJHmEBGzy_WZc
     </div>
   </div>
 
   <div class="adm-sec">
     <h3>Alta manual de asistente</h3>
     <div style="font-size:12px;color:var(--text2);margin-bottom:12px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);">
-      💡 Para leer una tarjeta nueva: ve al <strong>Lector</strong>, escanea la tarjeta y pulsa <strong>"+ Dar de alta"</strong> — el UID se cargará aquí automáticamente.
+      💡 Para leer una tarjeta nueva: ve al <strong>Lector</strong>, escanea la tarjeta y pulsa <strong>"+ Dar de alta"</strong>
     </div>
     <div class="manual-form">
       <div class="mft">Datos del asistente</div>
       <div class="form-row">
-        <input class="form-input" id="m-uid" placeholder="UID NFC (obligatorio)">
-        <input class="form-input" id="m-id"  placeholder="ID interno">
+        <input class="form-input" id="m-id"       placeholder="ID (ej: 0001)">
+      </div>
+      <div class="form-row">
+        <input class="form-input" id="m-nombre"   placeholder="Apellidos y Nombre (obligatorio)">
+      </div>
+      <div class="form-row" style="align-items:center;">
+        <input class="form-input" id="m-uid"      placeholder="NFC (obligatorio)" style="flex:1;">
       </div>
       <div id="uid-status" class="uid-status"></div>
-      <div class="form-row">
-        <input class="form-input" id="m-nombre"    placeholder="Nombre (obligatorio)">
-        <input class="form-input" id="m-apellidos" placeholder="Apellidos">
-      </div>
-      <div class="form-row">
-        <input class="form-input" id="m-email"    placeholder="Email">
-        <input class="form-input" id="m-telefono" placeholder="Teléfono">
-      </div>
       <div class="checks-row">
-        <label class="form-check"><input type="checkbox" id="m-servei"   checked> Sala Plenaria SERVEI</label>
-        <label class="form-check"><input type="checkbox" id="m-sidi"     checked> Sala Plenaria SIDI</label>
+        <label class="form-check"><input type="checkbox" id="m-sidi"    checked> Sala Plenaria SIDI</label>
+        <label class="form-check"><input type="checkbox" id="m-servei"  checked> Sala Plenaria SERVEI</label>
         <label class="form-check"><input type="checkbox" id="m-talleres" checked> Talleres</label>
       </div>
       <button class="btn-add" style="width:100%;padding:12px;" onclick="addManual()">+ Añadir asistente</button>
     </div>
+    <div class="imp-fb" id="imp-fb"></div>
   </div>
 
   <div class="adm-sec">
     <h3>Asistentes cargados <span id="ast-count" style="color:var(--text3);font-weight:400;"></span></h3>
     <div class="tw">
       <table>
-        <thead><tr><th>ID</th><th>Nombre</th><th>UID NFC</th><th>SERVEI</th><th>SIDI</th><th>Talleres</th><th></th></tr></thead>
+        <thead><tr><th>ID</th><th>Apellidos y Nombre</th><th>NFC</th><th>SIDI</th><th>SERVEI</th><th>Talleres</th><th></th></tr></thead>
         <tbody id="ast-tbody"><tr><td colspan="7" style="color:var(--text3);text-align:center;padding:24px;font-size:12px;">Cargando…</td></tr></tbody>
       </table>
     </div>
     <button class="exp-btn del-btn" onclick="clearAst()">Borrar todos los asistentes</button>
   </div>
+
 </div>
 
 <script type="module">
@@ -251,6 +248,12 @@ import { getFirestore, collection, doc, setDoc,
          deleteDoc, onSnapshot, addDoc, query, orderBy,
          writeBatch, getDocs, serverTimestamp }
                            from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+// ── Config ────────────────────────────────────────────────────────────────────
+const GOOG_CLIENT_ID  = '54196258743-392lur7317v69c6vm8bl5a730coe3iid.apps.googleusercontent.com';
+const SHEETS_ID       = '1ODbwwWMh4EBb3Kkzr-9ZIORjIc5_L3GJHmEBGzy_WZc';
+const SHEETS_RANGE    = 'acceso salas!A:E';
+const GOOG_SCOPES     = 'https://www.googleapis.com/auth/spreadsheets';
 
 const firebaseConfig = {
   apiKey:            "AIzaSyDJJxuxk4hLrQ3X2zWfvGi4y5v3KiuIBJY",
@@ -266,11 +269,14 @@ const db     = getFirestore(app);
 const colAst = collection(db, 'asistentes');
 const colReg = collection(db, 'registros');
 
-let asistentes = [], registros = [], salaActiva = 'servei', scanning = false;
+let asistentes = [], registros = [], salaActiva = 'servei';
+let nfcReader  = null, nfcActive = false;
+let tokenClient = null, accessToken = null, gapiReady = false;
 
+// ── Firebase sync ─────────────────────────────────────────────────────────────
 function setSyncStatus(state, msg) {
   document.getElementById('sync-bar').className = 'sync-bar ' + state;
-  document.getElementById('sync-dot').className = 'sync-dot' + (state === 'connecting' ? ' pulse' : '');
+  document.getElementById('sync-dot').className = 'sync-dot' + (state==='connecting'?' pulse':'');
   document.getElementById('sync-txt').textContent = msg;
 }
 
@@ -295,41 +301,186 @@ onSnapshot(qReg, snap => {
   document.getElementById('loading').classList.add('hidden');
 });
 
+// ── Google Sheets API ─────────────────────────────────────────────────────────
+function waitForGapi(cb) { if(typeof gapi!=='undefined'){cb();}else{setTimeout(()=>waitForGapi(cb),200);} }
+function waitForGoogle(cb) { if(typeof google!=='undefined'&&google.accounts){cb();}else{setTimeout(()=>waitForGoogle(cb),200);} }
+
+waitForGapi(() => {
+  gapi.load('client', async () => {
+    await gapi.client.init({});
+    await gapi.client.load('https://sheets.googleapis.com/$discovery/rest?version=v4');
+    gapiReady = true;
+  });
+});
+
+waitForGoogle(() => {
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GOOG_CLIENT_ID,
+    scope: GOOG_SCOPES,
+    callback: async (resp) => {
+      if (resp.error) { showSheetsFb('error', 'Error de autenticación: ' + resp.error); return; }
+      accessToken = resp.access_token;
+      gapi.client.setToken({access_token: accessToken});
+      await doSyncFromSheets();
+    }
+  });
+});
+
+function showSheetsFb(type, msg) {
+  const el = document.getElementById('sheets-fb');
+  el.style.display    = 'block';
+  el.style.background = type==='ok' ? 'var(--green-bg)' : type==='info' ? 'var(--blue-bg)' : 'var(--red-bg)';
+  el.style.border     = '1px solid ' + (type==='ok'?'var(--green-border)':type==='info'?'rgba(77,159,255,.3)':'var(--red-border)');
+  el.style.color      = type==='ok' ? 'var(--green)' : type==='info' ? 'var(--blue)' : 'var(--red)';
+  el.textContent      = msg;
+  if (type !== 'info') setTimeout(() => el.style.display='none', 7000);
+}
+
+window.syncFromSheets = function() {
+  if (!gapiReady) { showSheetsFb('error', 'API de Google cargando, espera un momento.'); return; }
+  if (accessToken) { gapi.client.setToken({access_token: accessToken}); doSyncFromSheets(); }
+  else { tokenClient.requestAccessToken({prompt: 'consent'}); }
+};
+
+async function doSyncFromSheets() {
+  showSheetsFb('info', 'Leyendo Google Sheets…');
+  try {
+    const resp = await gapi.client.sheets.spreadsheets.values.get({
+      spreadsheetId: SHEETS_ID,
+      range: SHEETS_RANGE,
+    });
+    const rows = resp.result.values;
+    if (!rows || rows.length < 2) { showSheetsFb('error', 'La hoja está vacía o no tiene datos.'); return; }
+
+    // Skip header row
+    const dataRows = rows.slice(1).filter(r => r && r[0]);
+    const siNo = v => (v||'').toString().trim().toLowerCase() === 'si';
+
+    const nuevos = [];
+    const existing = new Set(asistentes.map(a => a.uid));
+
+    dataRows.forEach(r => {
+      const id      = (r[0]||'').toString().trim();
+      const nombre  = (r[1]||'').toString().trim();
+      const uid     = (r[2]||'').toString().toUpperCase().replace(/[:\s\-]/g,'');
+      const salaSidi    = siNo(r[3]);
+      const salaServei  = siNo(r[4]);
+
+      if (!id) return;
+      // Use id as key if no NFC yet
+      const key = uid || 'id_' + id;
+      nuevos.push({ uid: key, id, nombre, apellidos: '', email: '', telefono: '',
+                    salaSidi, salaServei, salaTalleres: false, sinNfc: !uid });
+    });
+
+    // Write to Firebase
+    for (let i = 0; i < nuevos.length; i += 500) {
+      const b = writeBatch(db);
+      nuevos.slice(i, i+500).forEach(a => b.set(doc(colAst, a.uid), a));
+      await b.commit();
+    }
+    showSheetsFb('ok', '✓ ' + nuevos.length + ' asistentes sincronizados desde Google Sheets.');
+  } catch(err) {
+    showSheetsFb('error', 'Error al leer el Sheets: ' + (err.result?.error?.message || err.message));
+    console.error(err);
+  }
+}
+
+// Write a registro to Sheets
+async function writeRegistroToSheets(registro) {
+  if (!accessToken || !gapiReady) return;
+  try {
+    gapi.client.setToken({access_token: accessToken});
+    await gapi.client.sheets.spreadsheets.values.append({
+      spreadsheetId: SHEETS_ID,
+      range: 'registros!A:G',
+      valueInputOption: 'USER_ENTERED',
+      resource: {
+        values: [[
+          registro.fechaStr, registro.horaStr,
+          registro.nombre || 'Desconocido',
+          registro.uid, registro.sala,
+          registro.ok ? 'OK' : 'DENEGADO',
+          registro.id || ''
+        ]]
+      }
+    });
+  } catch(e) { console.warn('No se pudo escribir en Sheets:', e.message); }
+}
+
+// ── Acceso ────────────────────────────────────────────────────────────────────
 function puedeAcceder(a) {
-  return salaActiva === 'servei' ? a.salaServei : salaActiva === 'sidi' ? a.salaSidi : a.salaTalleres;
+  return salaActiva==='servei' ? a.salaServei : salaActiva==='sidi' ? a.salaSidi : a.salaTalleres;
+}
+
+// ── NFC automático ────────────────────────────────────────────────────────────
+async function initNfc() {
+  if (!('NDEFReader' in window)) {
+    document.getElementById('nfc-warn').textContent = 'Web NFC no disponible. Usa Chrome en Android con NFC activo.';
+    document.getElementById('nfc-warn').classList.add('show');
+    return;
+  }
+  try {
+    nfcReader = new NDEFReader();
+    await nfcReader.scan();
+    nfcActive = true;
+    document.getElementById('nfc-status-bar').style.display = 'flex';
+    document.getElementById('scan-area').className = 'scanner-area ready';
+    document.getElementById('scan-ring').className = 'scan-ring pulse';
+
+    nfcReader.addEventListener('reading', ({serialNumber}) => {
+      procesarLectura(serialNumber);
+    });
+
+    nfcReader.addEventListener('readingerror', () => {
+      console.warn('NFC reading error');
+    });
+  } catch(err) {
+    document.getElementById('nfc-warn').textContent = 'Error NFC: ' + err.message + '. Pulsa para reintentar.';
+    document.getElementById('nfc-warn').classList.add('show');
+    document.getElementById('nfc-warn').style.cursor = 'pointer';
+    document.getElementById('nfc-warn').onclick = () => { document.getElementById('nfc-warn').classList.remove('show'); initNfc(); };
+  }
 }
 
 async function procesarLectura(raw) {
-  const uid  = raw.toUpperCase().replace(/[:\s\-]/g, '');
+  const uid  = raw.toUpperCase().replace(/[:\s\-]/g,'');
   const a    = asistentes.find(x => x.uid === uid);
   const hora = new Date();
-  const horaStr  = hora.toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  const horaStr  = hora.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
   const fechaStr = hora.toLocaleDateString('es-ES');
-  const sala = salaActiva === 'servei' ? 'Sala Plenaria SERVEI' : salaActiva === 'sidi' ? 'Sala Plenaria SIDI' : 'Talleres';
-  if (!a) { showUnknown(uid, horaStr, sala); return; }
+  const sala = salaActiva==='servei'?'Sala Plenaria SERVEI':salaActiva==='sidi'?'Sala Plenaria SIDI':'Talleres';
+
+  if (!a || a.sinNfc) { showUnknown(uid, horaStr, sala); return; }
   const ok = puedeAcceder(a);
-  try { await addDoc(colReg, {uid, sala, ok, horaStr, fechaStr, aId: a.uid, nombre: a.nombre, apellidos: a.apellidos, ts: serverTimestamp()}); } catch(e) { console.error(e); }
+
+  const reg = {uid, sala, ok, horaStr, fechaStr, aId: a.uid, nombre: a.nombre, apellidos: a.apellidos||'', id: a.id, ts: serverTimestamp()};
+  try { await addDoc(colReg, reg); } catch(e) { console.error(e); }
+
+  // Write to Sheets asynchronously
+  writeRegistroToSheets({...reg, fechaStr, horaStr});
+
   showResult(a, ok, horaStr, sala);
 }
 
 function showResult(a, ok, horaStr, sala) {
-  const cl = ok ? 'ok' : 'deny';
+  const cl = ok?'ok':'deny';
   document.getElementById('scan-area').className  = 'scanner-area ' + cl;
   document.getElementById('scan-ring').className  = 'scan-ring ' + cl;
-  document.getElementById('scan-icon').textContent  = ok ? '✓' : '✕';
-  document.getElementById('scan-title').textContent = ok ? 'Acceso permitido' : 'Acceso denegado';
+  document.getElementById('scan-icon').textContent  = ok?'✓':'✕';
+  document.getElementById('scan-title').textContent = ok?'Acceso permitido':'Acceso denegado';
   document.getElementById('scan-sub').textContent   = sala + ' · ' + horaStr;
   document.getElementById('result-card').className  = 'result-card show ' + cl;
-  document.getElementById('rbadge').textContent = ok ? 'ACCESO OK' : 'DENEGADO';
+  document.getElementById('rbadge').textContent = ok?'ACCESO OK':'DENEGADO';
   document.getElementById('rbadge').className   = 'rbadge ' + cl;
-  document.getElementById('rname').textContent  = a.nombre + ' ' + a.apellidos;
-  document.getElementById('rmeta').textContent  = 'ID ' + a.id + (a.email ? ' · ' + a.email : '');
+  document.getElementById('rname').textContent  = a.nombre;
+  document.getElementById('rmeta').textContent  = 'ID ' + a.id + (a.uid && !a.sinNfc ? ' · ' + a.uid : '');
   document.getElementById('acceso-wrap').innerHTML =
-    '<div class="acceso-single ' + (ok?'si':'no') + '"><span style="font-size:20px;">' + (ok?'✓':'✕') + '</span>' + sala + '</div>';
+    '<div class="acceso-single '+(ok?'si':'no')+'"><span style="font-size:20px;">'+(ok?'✓':'✕')+'</span>'+sala+'</div>';
   document.getElementById('rdetail').textContent = ok
     ? 'Entrada registrada a las ' + horaStr + '.'
     : 'Sin permiso para ' + sala + '.';
-  setTimeout(resetScanner, 5000);
+  setTimeout(resetResult, 1500);
 }
 
 function showUnknown(uid, horaStr, sala) {
@@ -344,283 +495,155 @@ function showUnknown(uid, horaStr, sala) {
   document.getElementById('rname').textContent  = 'Tarjeta no encontrada';
   document.getElementById('rmeta').textContent  = uid;
   document.getElementById('acceso-wrap').innerHTML =
-    '<button class="btn-alta" onclick="irAltaConUID(\'' + uid + '\')">+ Dar de alta este asistente</button>';
-  document.getElementById('rdetail').textContent = 'Pulsa el botón para registrar este asistente.';
-  setTimeout(resetScanner, 10000);
+    '<button class="btn-alta" onclick="irAltaConUID(\''+uid+'\')">+ Dar de alta este asistente</button>';
+  document.getElementById('rdetail').textContent = 'Pulsa para registrar este asistente.';
+  setTimeout(resetResult, 3000);
 }
 
-window.irAltaConUID = function(uid) {
-  resetScanner();
-  document.getElementById('m-uid').value = uid;
-  const st = document.getElementById('uid-status');
-  st.style.display = 'block';
-  st.style.background = 'var(--green-bg)';
-  st.style.border = '1px solid var(--green-border)';
-  st.style.color = 'var(--green)';
-  st.textContent = '✓ UID cargado desde tarjeta: ' + uid;
-  document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
-  document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
-  document.getElementById('view-admin').classList.add('active');
-  document.querySelectorAll('.nav-tab')[2].classList.add('active');
-  setTimeout(() => document.getElementById('m-nombre').focus(), 300);
-};
-
-function resetScanner() {
-  document.getElementById('scan-area').className  = 'scanner-area';
-  document.getElementById('scan-ring').className  = 'scan-ring';
+function resetResult() {
+  document.getElementById('scan-area').className  = nfcActive ? 'scanner-area ready' : 'scanner-area';
+  document.getElementById('scan-ring').className  = nfcActive ? 'scan-ring pulse' : 'scan-ring';
   document.getElementById('scan-icon').textContent  = '📡';
   document.getElementById('scan-title').textContent = 'Listo para escanear';
   document.getElementById('scan-sub').textContent   = 'Acerca la tarjeta NFC al teléfono';
   document.getElementById('result-card').className  = 'result-card';
-  document.getElementById('btn-scan').className     = 'btn-scan ready';
-  document.getElementById('btn-scan').textContent   = 'Escanear tarjeta NFC';
-  scanning = false;
 }
 
-window.startScan = async function() {
-  if (scanning) return;
-  scanning = true;
-  document.getElementById('btn-scan').className   = 'btn-scan scanning';
-  document.getElementById('btn-scan').textContent = 'Esperando tarjeta…';
-  document.getElementById('scan-ring').classList.add('pulse');
-  document.getElementById('scan-title').textContent = 'Acerca la tarjeta';
-  document.getElementById('scan-sub').textContent   = 'Mantén la tarjeta cerca del teléfono';
-  if ('NDEFReader' in window) {
-    try {
-      const reader = new NDEFReader();
-      await reader.scan();
-      reader.addEventListener('reading', ({serialNumber}) => {
-        document.getElementById('scan-ring').classList.remove('pulse');
-        scanning = false;
-        procesarLectura(serialNumber);
-      }, {once: true});
-      return;
-    } catch(err) {
-      document.getElementById('nfc-warn').textContent = 'Error NFC: ' + err.message;
-      document.getElementById('nfc-warn').classList.add('show');
-    }
-  } else {
-    document.getElementById('nfc-warn').textContent = 'Web NFC no disponible. Usa Chrome en Android con NFC activo.';
-    document.getElementById('nfc-warn').classList.add('show');
-  }
-  document.getElementById('scan-ring').classList.remove('pulse');
-  scanning = false;
-  resetScanner();
-  const lista = asistentes.length ? asistentes.slice(0,5).map(a => a.uid + '  →  ' + a.nombre).join('\n') : '(sin asistentes)';
-  const uid = prompt('MODO SIMULACIÓN\nIntroduce el UID:\n\n' + lista);
-  if (uid && uid.trim()) procesarLectura(uid.trim());
+window.irAltaConUID = function(uid) {
+  resetResult();
+  document.getElementById('m-uid').value = uid;
+  const st = document.getElementById('uid-status');
+  st.style.display='block'; st.style.background='var(--green-bg)'; st.style.border='1px solid var(--green-border)'; st.style.color='var(--green)';
+  st.textContent = '✓ UID cargado: ' + uid;
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(el=>el.classList.remove('active'));
+  document.getElementById('view-admin').classList.add('active');
+  document.querySelectorAll('.nav-tab')[2].classList.add('active');
+  setTimeout(()=>document.getElementById('m-nombre').focus(),300);
 };
 
 window.selectSala = function(s) {
   salaActiva = s;
-  document.getElementById('btn-servei').className  = 'sala-btn' + (s==='servei'   ? ' sel' : '');
-  document.getElementById('btn-sidi').className    = 'sala-btn' + (s==='sidi'     ? ' sel' : '');
-  document.getElementById('btn-talleres').className = 'sala-btn' + (s==='talleres' ? ' sel' : '');
-  resetScanner();
+  document.getElementById('btn-servei').className  = 'sala-btn'+(s==='servei'?' sel':'');
+  document.getElementById('btn-sidi').className    = 'sala-btn'+(s==='sidi'?' sel':'');
+  document.getElementById('btn-talleres').className = 'sala-btn'+(s==='talleres'?' sel':'');
+  resetResult();
 };
 
+// ── Renders ───────────────────────────────────────────────────────────────────
 function renderRecent() {
-  document.getElementById('recent-list').innerHTML = registros.slice(0,6).map(r =>
-    '<div class="ri"><div class="dot ' + (r.ok?'ok':'deny') + '"></div>' +
-    '<div style="flex:1;min-width:0;"><div class="ri-name">' + (r.nombre?r.nombre+' '+r.apellidos:'Desconocido') + '</div>' +
-    '<div class="ri-info">' + r.sala + ' · ' + r.horaStr + '</div></div>' +
-    '<div style="font-size:11px;color:' + (r.ok?'var(--green)':'var(--red)') + ';">' + (r.ok?'✓':'✕') + '</div></div>'
+  document.getElementById('recent-list').innerHTML = registros.slice(0,6).map(r=>
+    '<div class="ri"><div class="dot '+(r.ok?'ok':'deny')+'"></div>'+
+    '<div style="flex:1;min-width:0;"><div class="ri-name">'+(r.nombre||'Desconocido')+'</div>'+
+    '<div class="ri-info">'+r.sala+' · '+r.horaStr+'</div></div>'+
+    '<div style="font-size:11px;color:'+(r.ok?'var(--green)':'var(--red)')+';">'+(r.ok?'✓':'✕')+'</div></div>'
   ).join('');
 }
 
 function renderLog() {
   const list = document.getElementById('log-list');
   list.innerHTML = registros.length
-    ? registros.map(r =>
-        '<div class="log-item"><div class="dot ' + (r.ok?'ok':'deny') + '" style="margin-top:3px;"></div>' +
-        '<div><div class="log-name">' + (r.nombre?r.nombre+' '+r.apellidos:'Desconocido · '+r.uid) + '</div>' +
-        '<div class="log-meta">' + r.sala + (r.aId?' · '+r.uid:'') + '</div></div>' +
-        '<div class="log-time">' + r.horaStr + '<br><span style="color:var(--text3)">' + r.fechaStr + '</span></div></div>'
+    ? registros.map(r=>
+        '<div class="log-item"><div class="dot '+(r.ok?'ok':'deny')+'" style="margin-top:3px;"></div>'+
+        '<div><div class="log-name">'+(r.nombre||'Desconocido · '+r.uid)+'</div>'+
+        '<div class="log-meta">'+r.sala+(r.id?' · ID '+r.id:'')+'</div></div>'+
+        '<div class="log-time">'+r.horaStr+'<br><span style="color:var(--text3)">'+r.fechaStr+'</span></div></div>'
       ).join('')
     : '<div class="empty-st">Sin registros todavía.</div>';
-  const total = registros.length, ok = registros.filter(r=>r.ok).length;
-  document.getElementById('s-total').textContent = total;
-  document.getElementById('s-ok').textContent    = ok;
-  document.getElementById('s-deny').textContent  = total - ok;
+  const total=registros.length, ok=registros.filter(r=>r.ok).length;
+  document.getElementById('s-total').textContent=total;
+  document.getElementById('s-ok').textContent=ok;
+  document.getElementById('s-deny').textContent=total-ok;
 }
 
 function renderAstTable() {
-  document.getElementById('ast-count').textContent = asistentes.length ? '('+asistentes.length+')' : '';
+  document.getElementById('ast-count').textContent = asistentes.length?'('+asistentes.length+')':'';
   document.getElementById('ast-tbody').innerHTML = asistentes.length
-    ? asistentes.map(a =>
-        '<tr><td class="mono">' + (a.id||'') + '</td>' +
-        '<td>' + (a.nombre||'') + ' ' + (a.apellidos||'') + '</td>' +
-        '<td class="mono">' + a.uid + '</td>' +
-        '<td><span class="' + (a.salaServei  ?'si-b':'no-b') + '">' + (a.salaServei  ?'SI':'NO') + '</span></td>' +
-        '<td><span class="' + (a.salaSidi    ?'si-b':'no-b') + '">' + (a.salaSidi    ?'SI':'NO') + '</span></td>' +
-        '<td><span class="' + (a.salaTalleres?'si-b':'no-b') + '">' + (a.salaTalleres?'SI':'NO') + '</span></td>' +
-        '<td><button class="btn-del-row" onclick="deleteAst(\'' + a._docId + '\')">×</button></td></tr>'
+    ? asistentes.map(a=>
+        '<tr><td class="mono">'+(a.id||'')+'</td>'+
+        '<td>'+(a.nombre||'')+'</td>'+
+        '<td class="mono">'+(a.sinNfc?'<span style="color:var(--amber)">Sin NFC</span>':a.uid)+'</td>'+
+        '<td><span class="'+(a.salaSidi?'si-b':'no-b')+'">'+(a.salaSidi?'SI':'NO')+'</span></td>'+
+        '<td><span class="'+(a.salaServei?'si-b':'no-b')+'">'+(a.salaServei?'SI':'NO')+'</span></td>'+
+        '<td><span class="'+(a.salaTalleres?'si-b':'no-b')+'">'+(a.salaTalleres?'SI':'NO')+'</span></td>'+
+        '<td><button class="btn-del-row" onclick="deleteAst(\''+a._docId+'\')">×</button></td></tr>'
       ).join('')
     : '<tr><td colspan="7" style="color:var(--text3);text-align:center;padding:24px;font-size:12px;">Sin asistentes.</td></tr>';
 }
 
+// ── CRUD ──────────────────────────────────────────────────────────────────────
 window.addManual = async function() {
-  const uid    = document.getElementById('m-uid').value.trim().toUpperCase().replace(/[:\s\-]/g, '');
+  const uid    = document.getElementById('m-uid').value.trim().toUpperCase().replace(/[:\s\-]/g,'');
   const nombre = document.getElementById('m-nombre').value.trim();
-  if (!uid)    { showFb('error', 'El UID NFC es obligatorio.'); return; }
-  if (!nombre) { showFb('error', 'El nombre es obligatorio.'); return; }
-  if (asistentes.find(a => a.uid === uid)) { showFb('error', 'Ya existe un asistente con ese UID.'); return; }
+  const id     = document.getElementById('m-id').value.trim();
+  if (!nombre) { showFb('error','El nombre es obligatorio.'); return; }
+  const key = uid || 'id_' + (id || Date.now());
+  if (asistentes.find(a=>a.uid===key)) { showFb('error','Ya existe un asistente con ese UID o ID.'); return; }
   try {
-    await setDoc(doc(colAst, uid), {
-      uid,
-      id:           document.getElementById('m-id').value.trim() || String(Date.now()),
-      nombre,
-      apellidos:    document.getElementById('m-apellidos').value.trim(),
-      email:        document.getElementById('m-email').value.trim(),
-      telefono:     document.getElementById('m-telefono').value.trim(),
-      salaServei:   document.getElementById('m-servei').checked,
+    await setDoc(doc(colAst, key), {
+      uid: key, id: id || String(asistentes.length+1).padStart(4,'0'),
+      nombre, apellidos: '', email: '', telefono: '',
       salaSidi:     document.getElementById('m-sidi').checked,
+      salaServei:   document.getElementById('m-servei').checked,
       salaTalleres: document.getElementById('m-talleres').checked,
+      sinNfc: !uid,
     });
-    ['m-uid','m-id','m-nombre','m-apellidos','m-email','m-telefono'].forEach(id => document.getElementById(id).value = '');
-    document.getElementById('m-servei').checked   = true;
-    document.getElementById('m-sidi').checked     = true;
-    document.getElementById('m-talleres').checked = true;
-    document.getElementById('uid-status').style.display = 'none';
-    showFb('ok', '✓ Asistente añadido y sincronizado.');
-  } catch(e) { showFb('error', 'Error: ' + e.message); }
+    ['m-uid','m-id','m-nombre'].forEach(i=>document.getElementById(i).value='');
+    document.getElementById('m-sidi').checked=true;
+    document.getElementById('m-servei').checked=true;
+    document.getElementById('m-talleres').checked=true;
+    document.getElementById('uid-status').style.display='none';
+    showFb('ok','✓ Asistente añadido y sincronizado.');
+  } catch(e) { showFb('error','Error: '+e.message); }
 };
 
 window.deleteAst = async function(docId) {
   if (!confirm('¿Eliminar este asistente?')) return;
-  try { await deleteDoc(doc(db, 'asistentes', docId)); } catch(e) { alert('Error: ' + e.message); }
+  try { await deleteDoc(doc(db,'asistentes',docId)); } catch(e) { alert('Error: '+e.message); }
 };
 
 window.clearAst = async function() {
   if (!confirm('¿Borrar TODOS los asistentes?')) return;
-  const snap = await getDocs(colAst);
-  const b = writeBatch(db); snap.docs.forEach(d => b.delete(d.ref)); await b.commit();
+  const snap=await getDocs(colAst); const b=writeBatch(db); snap.docs.forEach(d=>b.delete(d.ref)); await b.commit();
 };
 
 window.clearRegistros = async function() {
   if (!confirm('¿Borrar todo el historial?')) return;
-  const snap = await getDocs(colReg);
-  const b = writeBatch(db); snap.docs.forEach(d => b.delete(d.ref)); await b.commit();
-};
-
-function detectSep(lines) {
-  const s = lines.slice(0,3).join('\n');
-  return (s.match(/;/g)||[]).length > (s.match(/,/g)||[]).length ? ';' : ',';
-}
-
-function parseLine(l, sep) {
-  const r = []; let c = '', q = false;
-  for (let i = 0; i < l.length; i++) {
-    const ch = l[i];
-    if (ch === '"') { q = !q; continue; }
-    if (ch === sep && !q) { r.push(c.trim()); c = ''; continue; }
-    c += ch;
-  }
-  r.push(c.trim()); return r;
-}
-
-function norm(s) {
-  return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
-}
-
-window.importCSV = async function(input) {
-  const file = input.files[0]; if (!file) return;
-  const fr = new FileReader();
-  fr.onload = async function(e) {
-    const raw   = e.target.result.replace(/^\uFEFF/,'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
-    const lines = raw.trim().split('\n').filter(l => l.trim());
-    if (lines.length < 2) { showFb('error', 'Archivo vacío.'); return; }
-    const sep    = detectSep(lines);
-    const header = parseLine(lines[0], sep).map(norm);
-    const fi = {
-      uid:      header.findIndex(h => h === 'uid'),
-      id:       header.findIndex(h => h === 'id'),
-      nombre:   header.findIndex(h => h === 'nombre'),
-      apellidos:header.findIndex(h => h === 'apellidos' || h === 'apellido'),
-      email:    header.findIndex(h => h === 'email'),
-      telefono: header.findIndex(h => h === 'telefono' || h === 'tlf' || h === 'phone'),
-      servei:   header.findIndex(h => h.includes('servei')),
-      sidi:     header.findIndex(h => h.includes('sidi')),
-      talleres: header.findIndex(h => h.includes('taller')),
-    };
-    if (fi.uid < 0)     { showFb('error', 'Columna UID no encontrada. Cabeceras: ' + header.join(', ')); return; }
-    if (fi.nombre < 0)  { showFb('error', 'Columna nombre no encontrada.'); return; }
-    if (fi.servei < 0)  { showFb('error', 'Columna salaplenariaservei no encontrada. Cabeceras: ' + header.join(', ')); return; }
-    if (fi.sidi < 0)    { showFb('error', 'Columna salaplenariasidi no encontrada. Cabeceras: ' + header.join(', ')); return; }
-    if (fi.talleres < 0){ showFb('error', 'Columna talleres no encontrada. Cabeceras: ' + header.join(', ')); return; }
-    const siNo = v => {
-      const s = (v||'').toString().trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-      return ['SI','S','1','TRUE','VERDADERO','YES'].includes(s);
-    };
-    let imp = 0, act = 0, omit = 0;
-    const filas = [];
-    lines.slice(1).forEach((line, i) => {
-      const c   = parseLine(line, sep);
-      const uid = (c[fi.uid]||'').toUpperCase().replace(/[:\s\-]/g,'');
-      if (!uid) { omit++; return; }
-      const yaExiste = asistentes.find(a => a.uid === uid);
-      filas.push({
-        uid,
-        id:           fi.id >= 0        ? String(c[fi.id]||'').trim()        : String(i+1),
-        nombre:       fi.nombre >= 0    ? String(c[fi.nombre]||'').trim()    : '',
-        apellidos:    fi.apellidos >= 0  ? String(c[fi.apellidos]||'').trim() : '',
-        email:        fi.email >= 0     ? String(c[fi.email]||'').trim()     : '',
-        telefono:     fi.telefono >= 0   ? String(c[fi.telefono]||'').trim()  : '',
-        salaServei:   siNo(c[fi.servei]),
-        salaSidi:     siNo(c[fi.sidi]),
-        salaTalleres: siNo(c[fi.talleres]),
-      });
-      if (yaExiste) act++; else imp++;
-    });
-    for (let i = 0; i < filas.length; i += 500) {
-      const b = writeBatch(db);
-      filas.slice(i, i+500).forEach(a => b.set(doc(colAst, a.uid), a));
-      await b.commit();
-    }
-    input.value = '';
-    const total = imp + act;
-    if (total > 0) {
-      let msg = '✓ ' + total + ' asistentes procesados';
-      if (imp > 0 && act > 0) msg += ' (' + imp + ' nuevos, ' + act + ' actualizados)';
-      else if (imp > 0)       msg += ' (' + imp + ' nuevos)';
-      else                    msg += ' (' + act + ' actualizados)';
-      if (omit > 0) msg += '. ' + omit + ' filas sin UID omitidas.';
-      showFb('ok', msg);
-    } else {
-      showFb('error', 'No se procesó ningún asistente. Cabeceras: ' + header.join(', '));
-    }
-  };
-  fr.readAsText(file, 'UTF-8');
+  const snap=await getDocs(colReg); const b=writeBatch(db); snap.docs.forEach(d=>b.delete(d.ref)); await b.commit();
 };
 
 window.exportCSV = function() {
   if (!registros.length) { alert('No hay registros todavía.'); return; }
-  const rows = [['Nombre','Apellidos','UID','Sala','Acceso','Hora','Fecha']];
-  registros.forEach(r => rows.push([r.nombre||'Desconocido', r.apellidos||'', r.uid, r.sala, r.ok?'OK':'DENEGADO', r.horaStr, r.fechaStr]));
-  const csv  = rows.map(r => r.map(v => '"' + String(v).replace(/"/g,'""') + '"').join(',')).join('\n');
-  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'});
-  const a    = document.createElement('a');
-  a.href = URL.createObjectURL(blob); a.download = 'registro-asistencia.csv'; a.click();
+  const rows=[['ID','Nombre','UID','Sala','Acceso','Hora','Fecha']];
+  registros.forEach(r=>rows.push([r.id||'',r.nombre||'Desconocido',r.uid,r.sala,r.ok?'OK':'DENEGADO',r.horaStr,r.fechaStr]));
+  const csv=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download='registro-asistencia.csv'; a.click();
 };
 
-window.showView = function(v, btn) {
-  document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
-  document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
-  document.getElementById('view-' + v).classList.add('active');
+window.showView = function(v,btn) {
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(el=>el.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
   btn.classList.add('active');
-  if (v === 'registro') renderLog();
-  if (v === 'admin')    renderAstTable();
+  if (v==='registro') renderLog();
+  if (v==='admin')    renderAstTable();
 };
 
-function showFb(type, msg) {
-  const el = document.getElementById('imp-fb');
-  el.style.display    = 'block';
-  el.style.background = type==='ok' ? 'var(--green-bg)' : 'var(--red-bg)';
-  el.style.border     = '1px solid ' + (type==='ok' ? 'var(--green-border)' : 'var(--red-border)');
-  el.style.color      = type==='ok' ? 'var(--green)' : 'var(--red)';
-  el.textContent      = msg;
-  setTimeout(() => el.style.display = 'none', 7000);
+function showFb(type,msg) {
+  const el=document.getElementById('imp-fb');
+  el.style.display='block';
+  el.style.background=type==='ok'?'var(--green-bg)':'var(--red-bg)';
+  el.style.border='1px solid '+(type==='ok'?'var(--green-border)':'var(--red-border)');
+  el.style.color=type==='ok'?'var(--green)':'var(--red)';
+  el.textContent=msg;
+  setTimeout(()=>el.style.display='none',7000);
 }
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+initNfc();
+
 </script>
 </body>
 </html>
