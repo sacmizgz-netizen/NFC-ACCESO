@@ -3,13 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#00e57a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="NFC Access">
 <title>Control de Acceso NFC</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{--bg:#0a0a0f;--surface:#13131a;--surface2:#1c1c27;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);--text:#f0f0f5;--text2:#8888a0;--text3:#55556a;--green:#00e57a;--green-bg:rgba(0,229,122,0.1);--green-border:rgba(0,229,122,0.25);--red:#ff4d6a;--red-bg:rgba(255,77,106,0.1);--red-border:rgba(255,77,106,0.25);--amber:#ffb347;--amber-bg:rgba(255,179,71,0.08);--blue:#4d9fff;--blue-bg:rgba(77,159,255,0.1);--radius:12px;--radius-sm:8px;}
   *{box-sizing:border-box;margin:0;padding:0;}
   body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
-  .sync-bar{display:flex;align-items:center;justify-content:center;gap:8px;padding:8px 16px;font-size:11px;font-family:'DM Mono',monospace;transition:all .3s;}
+  .sync-bar{display:flex;align-items:center;justify-content:center;gap:8px;padding:8px 16px;font-size:11px;font-family:'DM Mono',monospace;}
   .sync-bar.connecting{background:var(--amber-bg);color:var(--amber);}
   .sync-bar.live{background:var(--green-bg);color:var(--green);}
   .sync-bar.error{background:var(--red-bg);color:var(--red);}
@@ -52,6 +58,8 @@
   .acceso-single.si{background:var(--green-bg);border:1px solid var(--green-border);color:var(--green);}
   .acceso-single.no{background:var(--red-bg);border:1px solid var(--red-border);color:var(--red);}
   .rdetail{font-size:13px;color:var(--text2);margin-top:10px;}
+  .btn-alta{width:100%;padding:10px;margin-top:10px;border-radius:var(--radius-sm);border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;}
+  .btn-alta:hover{border-color:var(--green);color:var(--green);}
   .btn-scan{width:100%;padding:16px;border-radius:var(--radius);border:none;font-size:16px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
   .btn-scan.ready{background:var(--green);color:#000;}
   .btn-scan.scanning{background:var(--surface2);color:var(--text2);cursor:not-allowed;}
@@ -109,7 +117,7 @@
   .loading-overlay.hidden{display:none;}
   .spinner{width:36px;height:36px;border:2px solid var(--border2);border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite;}
   @keyframes spin{to{transform:rotate(360deg)}}
-  .nfc-status{font-size:12px;font-family:'DM Mono',monospace;padding:8px 12px;border-radius:var(--radius-sm);margin-bottom:8px;display:none;}
+  .uid-status{font-size:12px;font-family:'DM Mono',monospace;padding:8px 12px;border-radius:var(--radius-sm);margin-bottom:8px;display:none;}
 </style>
 </head>
 <body>
@@ -151,7 +159,7 @@
     <span class="rbadge" id="rbadge"></span>
     <div class="rname"   id="rname"></div>
     <div class="rmeta"   id="rmeta"></div>
-    <div id="acceso-single-wrap"></div>
+    <div id="acceso-wrap"></div>
     <div class="rdetail" id="rdetail"></div>
   </div>
   <button class="btn-scan ready" id="btn-scan" onclick="startScan()">Escanear tarjeta NFC</button>
@@ -186,11 +194,11 @@
     </div>
     <div class="imp-fb" id="imp-fb"></div>
     <div class="fmt-box">
-      <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:8px;">COLUMNAS ESPERADAS EN EL CSV</div>
+      <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:6px;">COLUMNAS ESPERADAS</div>
       <div style="font-size:12px;color:var(--text2);font-family:'DM Mono',monospace;line-height:2;">
         uid · id · nombre · apellidos · email · telefono<br>
-        salaplenariaservei &nbsp;<span style="color:var(--green)">SI</span>/<span style="color:var(--red)">NO</span><br>
-        salaplenariasidi &nbsp;<span style="color:var(--green)">SI</span>/<span style="color:var(--red)">NO</span><br>
+        salaplenariaservei &nbsp;<span style="color:var(--green)">SI</span>/<span style="color:var(--red)">NO</span> &nbsp;·&nbsp;
+        salaplenariasidi &nbsp;<span style="color:var(--green)">SI</span>/<span style="color:var(--red)">NO</span> &nbsp;·&nbsp;
         talleres &nbsp;<span style="color:var(--green)">SI</span>/<span style="color:var(--red)">NO</span>
       </div>
     </div>
@@ -198,16 +206,16 @@
 
   <div class="adm-sec">
     <h3>Alta manual de asistente</h3>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:12px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);">
+      💡 Para leer una tarjeta nueva: ve al <strong>Lector</strong>, escanea la tarjeta y pulsa <strong>"+ Dar de alta"</strong> — el UID se cargará aquí automáticamente.
+    </div>
     <div class="manual-form">
-      <div class="mft">Nuevo asistente</div>
-      <div class="form-row" style="align-items:center;">
-        <input class="form-input" id="m-uid" placeholder="UID NFC (obligatorio)" style="flex:1;">
-        <button class="btn-add" id="btn-read-nfc" onclick="readNfcForForm()" style="flex-shrink:0;">📡 Leer tarjeta</button>
-      </div>
-      <div id="nfc-read-status" class="nfc-status"></div>
+      <div class="mft">Datos del asistente</div>
       <div class="form-row">
-        <input class="form-input" id="m-id" placeholder="ID interno">
+        <input class="form-input" id="m-uid" placeholder="UID NFC (obligatorio)">
+        <input class="form-input" id="m-id"  placeholder="ID interno">
       </div>
+      <div id="uid-status" class="uid-status"></div>
       <div class="form-row">
         <input class="form-input" id="m-nombre"    placeholder="Nombre (obligatorio)">
         <input class="form-input" id="m-apellidos" placeholder="Apellidos">
@@ -316,9 +324,11 @@ function showResult(a, ok, horaStr, sala) {
   document.getElementById('rbadge').className   = 'rbadge ' + cl;
   document.getElementById('rname').textContent  = a.nombre + ' ' + a.apellidos;
   document.getElementById('rmeta').textContent  = 'ID ' + a.id + (a.email ? ' · ' + a.email : '');
-  document.getElementById('acceso-single-wrap').innerHTML =
+  document.getElementById('acceso-wrap').innerHTML =
     '<div class="acceso-single ' + (ok?'si':'no') + '"><span style="font-size:20px;">' + (ok?'✓':'✕') + '</span>' + sala + '</div>';
-  document.getElementById('rdetail').textContent = ok ? 'Entrada registrada a las ' + horaStr + '.' : 'Sin permiso para ' + sala + '.';
+  document.getElementById('rdetail').textContent = ok
+    ? 'Entrada registrada a las ' + horaStr + '.'
+    : 'Sin permiso para ' + sala + '.';
   setTimeout(resetScanner, 5000);
 }
 
@@ -333,10 +343,27 @@ function showUnknown(uid, horaStr, sala) {
   document.getElementById('rbadge').className   = 'rbadge deny';
   document.getElementById('rname').textContent  = 'Tarjeta no encontrada';
   document.getElementById('rmeta').textContent  = uid;
-  document.getElementById('acceso-single-wrap').innerHTML = '';
-  document.getElementById('rdetail').textContent = 'Este UID no está en la lista de asistentes.';
-  setTimeout(resetScanner, 5000);
+  document.getElementById('acceso-wrap').innerHTML =
+    '<button class="btn-alta" onclick="irAltaConUID(\'' + uid + '\')">+ Dar de alta este asistente</button>';
+  document.getElementById('rdetail').textContent = 'Pulsa el botón para registrar este asistente.';
+  setTimeout(resetScanner, 10000);
 }
+
+window.irAltaConUID = function(uid) {
+  resetScanner();
+  document.getElementById('m-uid').value = uid;
+  const st = document.getElementById('uid-status');
+  st.style.display = 'block';
+  st.style.background = 'var(--green-bg)';
+  st.style.border = '1px solid var(--green-border)';
+  st.style.color = 'var(--green)';
+  st.textContent = '✓ UID cargado desde tarjeta: ' + uid;
+  document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('view-admin').classList.add('active');
+  document.querySelectorAll('.nav-tab')[2].classList.add('active');
+  setTimeout(() => document.getElementById('m-nombre').focus(), 300);
+};
 
 function resetScanner() {
   document.getElementById('scan-area').className  = 'scanner-area';
@@ -379,7 +406,7 @@ window.startScan = async function() {
   document.getElementById('scan-ring').classList.remove('pulse');
   scanning = false;
   resetScanner();
-  const lista = asistentes.length ? asistentes.slice(0,6).map(a => a.uid + '  →  ' + a.nombre + ' ' + a.apellidos).join('\n') : '(sin asistentes)';
+  const lista = asistentes.length ? asistentes.slice(0,5).map(a => a.uid + '  →  ' + a.nombre).join('\n') : '(sin asistentes)';
   const uid = prompt('MODO SIMULACIÓN\nIntroduce el UID:\n\n' + lista);
   if (uid && uid.trim()) procesarLectura(uid.trim());
 };
@@ -390,45 +417,6 @@ window.selectSala = function(s) {
   document.getElementById('btn-sidi').className    = 'sala-btn' + (s==='sidi'     ? ' sel' : '');
   document.getElementById('btn-talleres').className = 'sala-btn' + (s==='talleres' ? ' sel' : '');
   resetScanner();
-};
-
-window.readNfcForForm = async function() {
-  const btn    = document.getElementById('btn-read-nfc');
-  const status = document.getElementById('nfc-read-status');
-  function setStatus(type, msg) {
-    status.style.display    = 'block';
-    status.style.background = type==='ok' ? 'var(--green-bg)' : type==='waiting' ? 'var(--blue-bg)' : 'var(--red-bg)';
-    status.style.border     = '1px solid ' + (type==='ok' ? 'var(--green-border)' : type==='waiting' ? 'rgba(77,159,255,.3)' : 'var(--red-border)');
-    status.style.color      = type==='ok' ? 'var(--green)' : type==='waiting' ? 'var(--blue)' : 'var(--red)';
-    status.textContent      = msg;
-  }
-  if ('NDEFReader' in window) {
-    btn.textContent = 'Acerca la tarjeta…';
-    btn.disabled = true;
-    setStatus('waiting', 'Esperando tarjeta NFC…');
-    try {
-      const reader = new NDEFReader();
-      await reader.scan();
-      reader.addEventListener('reading', ({serialNumber}) => {
-        const uid = serialNumber.toUpperCase().replace(/[:\s\-]/g, '');
-        const existe = asistentes.find(a => a.uid === uid);
-        if (existe) { setStatus('error', 'Tarjeta ya asignada a: ' + existe.nombre + ' ' + existe.apellidos); }
-        else { document.getElementById('m-uid').value = uid; setStatus('ok', 'UID leído: ' + uid); }
-        btn.textContent = '📡 Leer tarjeta'; btn.disabled = false;
-      }, {once: true});
-    } catch(err) {
-      setStatus('error', 'Error NFC: ' + err.message);
-      btn.textContent = '📡 Leer tarjeta'; btn.disabled = false;
-    }
-  } else {
-    const uid = prompt('MODO SIMULACIÓN\nIntroduce el UID de la nueva tarjeta:');
-    if (uid && uid.trim()) {
-      const clean = uid.trim().toUpperCase().replace(/[:\s\-]/g, '');
-      const existe = asistentes.find(a => a.uid === clean);
-      if (existe) { setStatus('error', 'Tarjeta ya asignada a: ' + existe.nombre + ' ' + existe.apellidos); }
-      else { document.getElementById('m-uid').value = clean; setStatus('ok', 'UID introducido: ' + clean); }
-    }
-  }
 };
 
 function renderRecent() {
@@ -493,7 +481,7 @@ window.addManual = async function() {
     document.getElementById('m-servei').checked   = true;
     document.getElementById('m-sidi').checked     = true;
     document.getElementById('m-talleres').checked = true;
-    document.getElementById('nfc-read-status').style.display = 'none';
+    document.getElementById('uid-status').style.display = 'none';
     showFb('ok', '✓ Asistente añadido y sincronizado.');
   } catch(e) { showFb('error', 'Error: ' + e.message); }
 };
@@ -555,7 +543,7 @@ window.importCSV = async function(input) {
       sidi:     header.findIndex(h => h.includes('sidi')),
       talleres: header.findIndex(h => h.includes('taller')),
     };
-    if (fi.uid < 0)     { showFb('error', 'Columna UID no encontrada. Cabeceras leídas: ' + header.join(', ')); return; }
+    if (fi.uid < 0)     { showFb('error', 'Columna UID no encontrada. Cabeceras: ' + header.join(', ')); return; }
     if (fi.nombre < 0)  { showFb('error', 'Columna nombre no encontrada.'); return; }
     if (fi.servei < 0)  { showFb('error', 'Columna salaplenariaservei no encontrada. Cabeceras: ' + header.join(', ')); return; }
     if (fi.sidi < 0)    { showFb('error', 'Columna salaplenariasidi no encontrada. Cabeceras: ' + header.join(', ')); return; }
@@ -584,7 +572,6 @@ window.importCSV = async function(input) {
       });
       if (yaExiste) act++; else imp++;
     });
-    // Escribir todos en Firestore (setDoc sobreescribe si ya existe)
     for (let i = 0; i < filas.length; i += 500) {
       const b = writeBatch(db);
       filas.slice(i, i+500).forEach(a => b.set(doc(colAst, a.uid), a));
@@ -597,10 +584,10 @@ window.importCSV = async function(input) {
       if (imp > 0 && act > 0) msg += ' (' + imp + ' nuevos, ' + act + ' actualizados)';
       else if (imp > 0)       msg += ' (' + imp + ' nuevos)';
       else                    msg += ' (' + act + ' actualizados)';
-      if (omit > 0)           msg += '. ' + omit + ' filas omitidas (sin UID).';
+      if (omit > 0) msg += '. ' + omit + ' filas sin UID omitidas.';
       showFb('ok', msg);
     } else {
-      showFb('error', 'No se procesó ningún asistente. Cabeceras detectadas: ' + header.join(', '));
+      showFb('error', 'No se procesó ningún asistente. Cabeceras: ' + header.join(', '));
     }
   };
   fr.readAsText(file, 'UTF-8');
