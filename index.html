@@ -11,8 +11,7 @@
 <meta name="apple-mobile-web-app-title" content="NFC Access">
 <title>Control de Acceso NFC</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<script src="https://accounts.google.com/gsi/client" async defer></script>
-<script src="https://apis.google.com/js/api.js" async defer></script>
+
 <style>
   :root{--bg:#0a0a0f;--surface:#13131a;--surface2:#1c1c27;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);--text:#f0f0f5;--text2:#8888a0;--text3:#55556a;--green:#00e57a;--green-bg:rgba(0,229,122,0.1);--green-border:rgba(0,229,122,0.25);--red:#ff4d6a;--red-bg:rgba(255,77,106,0.1);--red-border:rgba(255,77,106,0.25);--amber:#ffb347;--amber-bg:rgba(255,179,71,0.08);--blue:#4d9fff;--blue-bg:rgba(77,159,255,0.1);--radius:12px;--radius-sm:8px;}
   *{box-sizing:border-box;margin:0;padding:0;}
@@ -250,10 +249,6 @@ import { getFirestore, collection, doc, setDoc,
                            from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 // ── Config ────────────────────────────────────────────────────────────────────
-const GOOG_CLIENT_ID  = '54196258743-392lur7317v69c6vm8bl5a730coe3iid.apps.googleusercontent.com';
-const SHEETS_ID       = '1ODbwwWMh4EBb3Kkzr-9ZIORjIc5_L3GJHmEBGzy_WZc';
-const SHEETS_RANGE    = 'acceso salas!A:E';
-const GOOG_SCOPES     = 'https://www.googleapis.com/auth/spreadsheets';
 
 const firebaseConfig = {
   apiKey:            "AIzaSyDJJxuxk4hLrQ3X2zWfvGi4y5v3KiuIBJY",
@@ -271,7 +266,6 @@ const colReg = collection(db, 'registros');
 
 let asistentes = [], registros = [], salaActiva = 'servei';
 let nfcReader  = null, nfcActive = false;
-let tokenClient = null, accessToken = null, gapiReady = false;
 
 // ── Firebase sync ─────────────────────────────────────────────────────────────
 function setSyncStatus(state, msg) {
@@ -301,30 +295,8 @@ onSnapshot(qReg, snap => {
   document.getElementById('loading').classList.add('hidden');
 });
 
-// ── Google Sheets API ─────────────────────────────────────────────────────────
-function waitForGapi(cb) { if(typeof gapi!=='undefined'){cb();}else{setTimeout(()=>waitForGapi(cb),200);} }
-function waitForGoogle(cb) { if(typeof google!=='undefined'&&google.accounts){cb();}else{setTimeout(()=>waitForGoogle(cb),200);} }
-
-waitForGapi(() => {
-  gapi.load('client', async () => {
-    await gapi.client.init({});
-    await gapi.client.load('https://sheets.googleapis.com/$discovery/rest?version=v4');
-    gapiReady = true;
-  });
-});
-
-waitForGoogle(() => {
-  tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: GOOG_CLIENT_ID,
-    scope: GOOG_SCOPES,
-    callback: async (resp) => {
-      if (resp.error) { showSheetsFb('error', 'Error de autenticación: ' + resp.error); return; }
-      accessToken = resp.access_token;
-      gapi.client.setToken({access_token: accessToken});
-      await doSyncFromSheets();
-    }
-  });
-});
+// ── Apps Script (sin login) ───────────────────────────────────────────────────
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyXcl61oEH17BtTruZz4eTFY59iHCoD2DJ_oaqrgjqmwbhEWD9VcfYQlD7zz74-muk_/exec';
 
 function showSheetsFb(type, msg) {
   const el = document.getElementById('sheets-fb');
@@ -336,76 +308,68 @@ function showSheetsFb(type, msg) {
   if (type !== 'info') setTimeout(() => el.style.display='none', 7000);
 }
 
-window.syncFromSheets = function() {
-  if (!gapiReady) { showSheetsFb('error', 'API de Google cargando, espera un momento.'); return; }
-  if (accessToken) { gapi.client.setToken({access_token: accessToken}); doSyncFromSheets(); }
-  else { tokenClient.requestAccessToken({prompt: 'consent'}); }
-};
-
-async function doSyncFromSheets() {
+window.syncFromSheets = async function() {
   showSheetsFb('info', 'Leyendo Google Sheets…');
   try {
-    const resp = await gapi.client.sheets.spreadsheets.values.get({
-      spreadsheetId: SHEETS_ID,
-      range: SHEETS_RANGE,
-    });
-    const rows = resp.result.values;
-    if (!rows || rows.length < 2) { showSheetsFb('error', 'La hoja está vacía o no tiene datos.'); return; }
+    const resp = await fetch(SCRIPT_URL + '?action=getAsistentes');
+    const rows = await resp.json();
+    if (!rows || rows.length < 2) { showSheetsFb('error', 'La hoja está vacía.'); return; }
 
-    // Skip header row
-    const dataRows = rows.slice(1).filter(r => r && r[0]);
     const siNo = v => (v||'').toString().trim().toLowerCase() === 'si';
-
     const nuevos = [];
-    const existing = new Set(asistentes.map(a => a.uid));
 
-    dataRows.forEach(r => {
-      const id      = (r[0]||'').toString().trim();
-      const nombre  = (r[1]||'').toString().trim();
-      const uid     = (r[2]||'').toString().toUpperCase().replace(/[:\s\-]/g,'');
-      const salaSidi    = siNo(r[3]);
-      const salaServei  = siNo(r[4]);
-
-      if (!id) return;
-      // Use id as key if no NFC yet
+    rows.slice(1).forEach(r => {
+      const id     = (r[0]||'').toString().trim();
+      const nombre = (r[1]||'').toString().trim();
+      const uid    = (r[2]||'').toString().toUpperCase().replace(/[:\s\-]/g,'');
+      if (!id && !nombre) return;
       const key = uid || 'id_' + id;
-      nuevos.push({ uid: key, id, nombre, apellidos: '', email: '', telefono: '',
-                    salaSidi, salaServei, salaTalleres: false, sinNfc: !uid });
+      nuevos.push({
+        uid: key, id, nombre, apellidos: '', email: '', telefono: '',
+        salaSidi:     siNo(r[3]),
+        salaServei:   siNo(r[4]),
+        salaTalleres: false,
+        sinNfc: !uid,
+      });
     });
 
-    // Write to Firebase
     for (let i = 0; i < nuevos.length; i += 500) {
       const b = writeBatch(db);
       nuevos.slice(i, i+500).forEach(a => b.set(doc(colAst, a.uid), a));
       await b.commit();
     }
-    showSheetsFb('ok', '✓ ' + nuevos.length + ' asistentes sincronizados desde Google Sheets.');
+    showSheetsFb('ok', '✓ ' + nuevos.length + ' asistentes sincronizados.');
   } catch(err) {
-    showSheetsFb('error', 'Error al leer el Sheets: ' + (err.result?.error?.message || err.message));
-    console.error(err);
+    showSheetsFb('error', 'Error: ' + err.message);
   }
+};
+
+async function writeRegistroToSheets(registro) {
+  try {
+    await fetch(SCRIPT_URL + '?action=addRegistro', {
+      method: 'POST',
+      body: JSON.stringify([
+        registro.fechaStr, registro.horaStr,
+        registro.nombre || 'Desconocido',
+        registro.uid, registro.sala,
+        registro.ok ? 'OK' : 'DENEGADO',
+        registro.id || ''
+      ])
+    });
+  } catch(e) { console.warn('No se pudo escribir registro en Sheets:', e); }
 }
 
-// Write a registro to Sheets
-async function writeRegistroToSheets(registro) {
-  if (!accessToken || !gapiReady) return;
+async function writeAsistenteToSheets(a) {
   try {
-    gapi.client.setToken({access_token: accessToken});
-    await gapi.client.sheets.spreadsheets.values.append({
-      spreadsheetId: SHEETS_ID,
-      range: 'registros!A:G',
-      valueInputOption: 'USER_ENTERED',
-      resource: {
-        values: [[
-          registro.fechaStr, registro.horaStr,
-          registro.nombre || 'Desconocido',
-          registro.uid, registro.sala,
-          registro.ok ? 'OK' : 'DENEGADO',
-          registro.id || ''
-        ]]
-      }
+    await fetch(SCRIPT_URL + '?action=addAsistente', {
+      method: 'POST',
+      body: JSON.stringify([
+        a.id, a.nombre, a.sinNfc ? '' : a.uid,
+        a.salaSidi ? 'si' : 'no',
+        a.salaServei ? 'si' : 'no'
+      ])
     });
-  } catch(e) { console.warn('No se pudo escribir en Sheets:', e.message); }
+  } catch(e) { console.warn('No se pudo escribir asistente en Sheets:', e); }
 }
 
 // ── Acceso ────────────────────────────────────────────────────────────────────
@@ -497,7 +461,7 @@ function showUnknown(uid, horaStr, sala) {
   document.getElementById('acceso-wrap').innerHTML =
     '<button class="btn-alta" onclick="irAltaConUID(\''+uid+'\')">+ Dar de alta este asistente</button>';
   document.getElementById('rdetail').textContent = 'Pulsa para registrar este asistente.';
-  setTimeout(resetResult, 3000);
+  setTimeout(resetResult, 5000);
 }
 
 function resetResult() {
@@ -594,6 +558,7 @@ window.addManual = async function() {
     document.getElementById('m-talleres').checked=true;
     document.getElementById('uid-status').style.display='none';
     showFb('ok','✓ Asistente añadido y sincronizado.');
+    writeAsistenteToSheets({uid: key, id: id || String(asistentes.length+1).padStart(4,'0'), nombre, salaSidi: document.getElementById('m-sidi').checked, salaServei: document.getElementById('m-servei').checked, sinNfc: !uid});
   } catch(e) { showFb('error','Error: '+e.message); }
 };
 
